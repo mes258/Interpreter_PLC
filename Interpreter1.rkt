@@ -25,7 +25,9 @@
       ((and (eq? 'var (car (car lis))) (null? (cdr (cdr (car lis))))) (cons (M_state_decl1 (car lis)) (M_statement_list (cdr lis) s)))
       ((eq? 'var (car (car lis))) (cons (M_state_decl2 (car lis)) (M_statement_list (cdr lis) s)))
       ((eq? 'while (car (car lis))) (cons (M_state_while (car lis)) (M_statement_list (cdr lis) s)))
-      ((eq? 'return (car (car lis))) (cons (M_state_while (car lis)) (M_statement_list (cdr lis) s)))
+      ((eq? 'return (car (car lis))) (cons (M_state_return (car lis)) (M_statement_list (cdr lis) s)))
+      ((eq? 'if (car (car lis))) (cons (M_state_if (car lis)) (M_statement_list (cdr lis) s)))
+      (else s))))
 
 
       ;more sutff here
@@ -35,12 +37,6 @@
    ;     s
    ;     (cons (M_statement_list (cdr list) s) (M_statement_list (car slist) s)))))
 
-(define M_state_if
-  (lambda (condition then else s)
-    (if (M_bool condition s)
-        (M_state then s)
-        (M_state else s))))
-
 ;need M_bool, M_state, M_value for:
 ; variable declaration 	(var variable) or (var variable value)
 ;assignment 	(= variable expression)
@@ -48,6 +44,7 @@
 ;if statement 	(if conditional then-statement optional-else-statement)
 ;while statement 	(while conditional body-statement)
 
+;M_State_stuff
 (define M_state_decl1
   (lambda (var variable)
     (cond
@@ -62,3 +59,32 @@
   (lambda (while condit body) 
     (cond
       )))
+
+(define M_state_if
+  (lambda (condition then else s)
+    (if (M_bool condition s)
+        (M_state then s)
+        (M_state else s))))
+
+
+;M_value_stuff
+
+(define M_value_op
+  (lambda (lis)
+    (cond
+      ((null? lis) '())
+      ((not (list? lis)) lis)
+      ((eq? (operator lis) '+) (+ (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      ((eq? (operator lis) '-) (- (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      ((eq? (operator lis) '*) (* (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      ((eq? (operator lis) '/) (quotient (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      (else (error 'badoperation "Unknown operator")))))
+
+;abstraction for M_value_op
+(define operator cadr)
+(define operand1 car)
+(define operand2 caddr)
+
+
+
