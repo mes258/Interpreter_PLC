@@ -18,26 +18,20 @@
 
 
 ;go through the list of statements returned by interpret
-(define M_statement_list
+(define M_list
   (lambda (lis s)
     (cond
       ((null? lis) s)
-      ((and (eq? 'var (car (car lis))) (null? (cdr (cdr (car lis))))) (cons (M_state_decl1 (car lis)) (M_statement_list (cdr lis) s)))
-      ((eq? 'var (car (car lis))) (cons (M_state_decl2 (car lis)) (M_statement_list (cdr lis) s)))
-      ((eq? 'while (car (car lis))) (cons (M_state_while (car lis)) (M_statement_list (cdr lis) s)))
-      ((eq? 'return (car (car lis))) (cons (M_state_return (car lis)) (M_statement_list (cdr lis) s)))
-      ((eq? 'if (car (car lis))) (cons (M_state_if (car lis)) (M_statement_list (cdr lis) s)))
-      (else s))))
+      ((and (eq? (type lis) 'var) (null? (cddar lis))) (cons (M_state_decl1 (car lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'var) (cons (M_state_decl2 (car lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'while) (cons (M_state_while (car lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'return) (cons (M_state_return (car lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'if) (cons (M_state_if (car lis) s) (M_list (cdr lis) s)))
+      (else lis))))
 
-;abstraction for M_statement_list
+;abstraction for M_list
 (define type caar)
 
-      ;more sutff here
-
-    
-   ; (if (null? slist)
-   ;     s
-   ;     (cons (M_statement_list (cdr list) s) (M_statement_list (car slist) s)))))
 
 ;need M_bool, M_state, M_value for:
 ; variable declaration 	(var variable) or (var variable value)
@@ -48,31 +42,31 @@
 
 ;M_State_stuff
 (define M_state_decl1
-  (lambda (var variable)
+  (lambda (var variable s)
     (cond
       )))
 
 (define M_state_decl2
-  (lambda (var variable value)
+  (lambda (var variable value s)
     (cond
       )))
 
 (define M_state_while
-  (lambda (while condit body) 
+  (lambda (while condit body s) 
     (cond
       )))
 
 (define M_state_return
-  (lambda (return exp)
+  (lambda (return exp s)
     (cond
       ((null? exp) '())
       (else (M_bool_op exp)))))
 
 (define M_state_if
   (lambda (condition then else s)
-    (if (M_bool_op condition s)
-        (M_state then s)
-        (M_state else s))))
+    (if (M_bool_op condition)
+        (M_list then s)
+        (M_list else s))))
 
 
 ;M_value_stuff
