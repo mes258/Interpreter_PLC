@@ -3,9 +3,9 @@
 
 (require "simpleParser.scm")
 
-(define interpret
-  (lambda (filename)
-    (parser filename)))
+;(define interpret
+ ; (lambda (filename)
+ ;   (parser filename)))
 
 ;Example list of statements:
 ;((var x) (= x 10) (var y (+ (* 3 x) 5)) (while (!= (% y x) 3) (= y (+ y 1)))
@@ -14,27 +14,31 @@
 
 ;I think we should do state in the form: ((x y ...) (5 12 ...)) so its easier
 ;going forward. 
+(define p1 (build-path (current-directory) "code.txt"))
 
 
-
+;(parser p1)
+(define lis (parser p1))
+;need to pass lis into M_list
 ;go through the list of statements returned by interpret
 (define M_list
-  (lambda (lis s)
+  (lambda (s)
     (cond
       ((null? lis) s)
-      ((and (eq? (type lis) 'var) (null? (cddar lis))) (cons (M_state_decl1 (car lis) s) (M_list (cdr lis) s)))
+      ((and (eq? (type lis) 'var) (null? (cddar lis))) (cons (M_state_decl1 (car lis) (cadr lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'var) (cons (M_state_decl2 (car lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'while) (cons (M_state_while (car lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'return) (cons (M_state_return (car lis) s) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'if) (cons (M_state_if (car lis) s) (M_list (cdr lis) s)))
-      (else lis))))
+      ((and (eq? (type lis) 'if) (null? (cdddar lis))) (cons (M_state_if (car lis) (cadr lis) (caddr lis)) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'if) (cons (M_state_if_else (car lis) s) (M_list (cdr lis) s)))
+      (else lis)))) ; need to fix parameters of functions - get each part of (car lis) not just (car lis) for the parameter
 
 ;abstraction for M_list
 (define type caar)
 
 
 ;need M_bool, M_state, M_value for:
-; variable declaration 	(var variable) or (var variable value)
+;variable declaration 	(var variable) or (var variable value)
 ;assignment 	(= variable expression)
 ;return 	(return expression)
 ;if statement 	(if conditional then-statement optional-else-statement)
@@ -62,11 +66,17 @@
       ((null? exp) '())
       (else (M_bool_op exp)))))
 
-(define M_state_if
+(define M_state_if_else
   (lambda (condition then else s)
     (if (M_bool_op condition)
         (M_list then s)
         (M_list else s))))
+
+(define M_state_if
+  (lambda (condition then s)
+    (if (M_bool_op condition)
+        (M_list then s)
+        `())))
 
 
 ;M_value_stuff
