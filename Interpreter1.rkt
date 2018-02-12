@@ -105,7 +105,12 @@
       ((eq? (car lis) '>) (> (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
       ((eq? (car lis) '<) (< (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
       ((eq? (car lis) '!=) (not (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
+      ((eq? (car lis) '||) (or (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
+      ((eq? (car lis) '&&) (and (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
+      ((eq? (car lis) '!) (not (M_bool_op (car (cdr lis))))) 
       (else (M_value_op lis)))))
+
+;add abstraction 
   
 
 
