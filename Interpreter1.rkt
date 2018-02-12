@@ -29,6 +29,8 @@
       ((eq? 'if (car (car lis))) (cons (M_state_if (car lis)) (M_statement_list (cdr lis) s)))
       (else s))))
 
+;abstraction for M_statement_list
+(define type caar)
 
       ;more sutff here
 
