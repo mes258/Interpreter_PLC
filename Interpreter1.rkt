@@ -60,9 +60,13 @@
     (cond
       )))
 
+(define M_state_return
+  (lambda (return exp)
+    (exp)))
+
 (define M_state_if
   (lambda (condition then else s)
-    (if (M_bool condition s)
+    (if (M_bool_op condition s)
         (M_state then s)
         (M_state else s))))
 
@@ -82,9 +86,28 @@
       (else (error 'badoperation "Unknown operator")))))
 
 ;abstraction for M_value_op
-(define operator cadr)
-(define operand1 car)
+(define operator car)
+(define operand1 cadr)
 (define operand2 caddr)
+
+;M_boolean_stuff
+
+(define M_bool_op
+  (lambda (lis)
+    (cond
+      ((null? lis) '())
+      ((not? (list? lis)) lis)
+      ((eq? (car lis) '!=) (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
+      ((eq? (car lis) '>=) (or (> (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))
+                               (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
+      ((eq? (car lis) '<=) (or (< (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))
+                               (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
+      ((eq? (car lis) '>) (> (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
+      ((eq? (car lis) '<) (< (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
+      ((eq? (car lis) '!=) (not (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
+      (else (M_value_op lis)))))
+  
+
 
 
 
