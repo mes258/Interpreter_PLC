@@ -57,7 +57,7 @@
       )))
 
 (define M_state_return
-  (lambda (return exp s)
+  (lambda (return exp)
     (cond
       ((null? exp) '())
       (else (M_bool_op exp)))))
@@ -89,7 +89,7 @@
   (lambda (lis)
     (cond
       ((null? lis) '())
-      ((not? (list? lis)) lis)
+      ((not (list? lis)) lis)
       ((eq? (operator lis) '==) (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
       ((eq? (operator lis) '>=) (or (> (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))
                                 (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
