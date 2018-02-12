@@ -62,7 +62,7 @@
 
 (define M_state_return
   (lambda (return exp)
-    (exp)))
+    (exp))) 
 
 (define M_state_if
   (lambda (condition then else s)
@@ -85,11 +85,6 @@
       ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
       (else (error 'badoperation "Unknown operator")))))
 
-;abstraction for M_value_op
-(define operator car)
-(define operand1 cadr)
-(define operand2 caddr)
-
 ;M_boolean_stuff
 
 (define M_bool_op
@@ -97,22 +92,22 @@
     (cond
       ((null? lis) '())
       ((not? (list? lis)) lis)
-      ((eq? (car lis) '!=) (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
-      ((eq? (car lis) '>=) (or (> (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))
-                               (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
-      ((eq? (car lis) '<=) (or (< (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))
-                               (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
-      ((eq? (car lis) '>) (> (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
-      ((eq? (car lis) '<) (< (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
-      ((eq? (car lis) '!=) (not (eq? (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis)))))))
-      ((eq? (car lis) '||) (or (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
-      ((eq? (car lis) '&&) (and (M_bool_op (car (cdr lis))) (M_bool_op (car (cdr (cdr lis))))))
-      ((eq? (car lis) '!) (not (M_bool_op (car (cdr lis))))) 
+      ((eq? (operator lis) '==) (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
+      ((eq? (operator lis) '>=) (or (> (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))
+                                (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
+      ((eq? (operator lis) '<=) (or (< (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))
+                               (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
+      ((eq? (operator lis) '>) (> (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
+      ((eq? (operator lis) '<) (< (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
+      ((eq? (operator lis) '!=) (not (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
+      ((eq? (operator lis) '||) (or (M_bool_op (operand1 lis)) (M_bool_op (car (operand2 lis)))))
+      ((eq? (operator lis) '&&) (and (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
+      ((eq? (operator lis) '!) (not (M_bool_op (operand1 lis))))
       (else (M_value_op lis)))))
 
-;add abstraction 
-  
-
-
+;abstraction for M_value_op and M_bool_op
+(define operator car)
+(define operand1 cadr)
+(define operand2 caddr)
 
 
