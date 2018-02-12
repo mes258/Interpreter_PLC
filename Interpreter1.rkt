@@ -62,7 +62,9 @@
 
 (define M_state_return
   (lambda (return exp)
-    (exp))) 
+    (cond
+      ((null? exp) '())
+      (else (M_bool_op exp)))))
 
 (define M_state_if
   (lambda (condition then else s)
