@@ -22,13 +22,18 @@
   (lambda (lis s)
     (cond
       ((null? lis) s)
-      ((and (eq? 'var (car (car lis))) (null? (cdr (cdr (car lis))))) (cons (M_state_decl1 (car lis)) (M_statement_list (cdr lis))))
+      ((and (eq? 'var (car (car lis))) (null? (cdr (cdr (car lis))))) (cons (M_state_decl1 (car lis)) (M_statement_list (cdr lis) s)))
+      ((eq? 'var (car (car lis))) (cons (M_state_decl2 (car lis)) (M_statement_list (cdr lis) s)))
+      ((eq? 'while (car (car lis))) (cons (M_state_while (car lis)) (M_statement_list (cdr lis) s)))
+      ((eq? 'return (car (car lis))) (cons (M_state_while (car lis)) (M_statement_list (cdr lis) s)))
+
+
       ;more sutff here
 
     
    ; (if (null? slist)
    ;     s
-   ;     (cons (M_statement_list (cdr slist) s) (M_statement_list (car slist) s)))))
+   ;     (cons (M_statement_list (cdr list) s) (M_statement_list (car slist) s)))))
 
 (define M_state_if
   (lambda (condition then else s)
@@ -43,6 +48,17 @@
 ;if statement 	(if conditional then-statement optional-else-statement)
 ;while statement 	(while conditional body-statement)
 
-(define M_state_decl
+(define M_state_decl1
   (lambda (var variable)
-    (cond 
+    (cond
+      )))
+
+(define M_state_decl2
+  (lambda (var variable value)
+    (cond
+      )))
+
+(define M_state_while
+  (lambda (while condit body) 
+    (cond
+      )))
