@@ -22,19 +22,23 @@
 ;need to pass lis into M_list
 ;go through the list of statements returned by interpret
 (define M_list
-  (lambda (s)
+  (lambda (lis s)
     (cond
       ((null? lis) s)
-      ((and (eq? (type lis) 'var) (null? (cddar lis))) (cons (M_state_decl1 (car lis) (cadr lis) s) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'var) (cons (M_state_decl2 (car lis) s) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'while) (cons (M_state_while (car lis) s) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'return) (cons (M_state_return (car lis) s) (M_list (cdr lis) s)))
-      ((and (eq? (type lis) 'if) (null? (cdddar lis))) (cons (M_state_if (car lis) (cadr lis) (caddr lis)) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'if) (cons (M_state_if_else (car lis) s) (M_list (cdr lis) s)))
+      ((and (eq? (type lis) 'var) (null? (caddr lis))) (cons (M_state_decl1 (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'var) (cons (M_state_decl2 (fir lis) (sec lis) (thr lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'while) (cons (M_state_while (fir lis) (sec lis) (thr lis) (frth lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'return) (cons (M_state_return (fir lis) (sec lis)) (M_list (cdr lis) s)))
+      ((and (eq? (type lis) 'if) (null? (cdddar lis))) (cons (M_state_if (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) 'if) (cons (M_state_if_else (fir lis) (sec lis) (thr lis) s) (M_list (cdr lis) s)))
       (else lis)))) ; need to fix parameters of functions - get each part of (car lis) not just (car lis) for the parameter
 
 ;abstraction for M_list
-(define type caar)
+(define type caar);type of line
+(define fir caar);first element 
+(define sec cadr);second element
+(define thr caddr);third element
+(define frth cadddr);fourth element
 
 
 ;need M_bool, M_state, M_value for:
