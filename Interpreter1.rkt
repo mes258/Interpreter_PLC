@@ -1,5 +1,5 @@
 ;Interpreter1 below:
-;Vincent Portell, Michael Smith
+;Vincent Portell, Michael Smith, Thomas Lerner
 
 (require "simpleParser.scm")
 
