@@ -30,6 +30,8 @@
        (cons (M_state_decl1 (fir lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'var)
        (cons (M_state_decl2 (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+      ((eq? (type lis) '=)
+       (cons (M_state_assign (fir lis) (sec lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'while)
        (cons (M_state_while (fir lis) (sec lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'return)
@@ -73,6 +75,13 @@
     (cond
       ((null? s) (list (variable) (value)))
       (else (list (cons variable (car s)) (cons value (cadr s)))))))
+
+(define M_state_assign ; set variable = exp in state
+  (lambda (variable exp s)
+    (cond
+      ((null? s) s)
+      ((eq? 'variable (caar s)) (cons exp (cddr lis)))
+      (else (M_state_assign variable exp (list (cdar s) (cddr s)))))))      
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
