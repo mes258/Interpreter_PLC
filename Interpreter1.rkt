@@ -89,6 +89,10 @@
         (M_state_while condit (cdr body) (M_list (car body) s))
         ;how to modify condit when state changes? helper function maybe?-> takes in body and condit and sees if condit changes?
         s)))
+(define while_helper
+  (lambda (con body)
+    (cond
+      (()))))
 
 (define M_state_return ;return exp
   (lambda (exp s)
@@ -97,7 +101,6 @@
       ((number? (M_bool_op exp)) (M_bool_op exp))
       ((eq? (caar s) 'exp) (cadr s))
       (else (M_state_return s (list (cdar) (cddr)))))))
-
 ;return needs to account for (return x) where x is in the state ; <- the above may work
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
