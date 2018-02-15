@@ -32,7 +32,7 @@
       ((eq? (type lis) 'while)
        (cons (M_state_while (fir lis) (sec lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'return)
-       (cons (M_state_return (fir lis)) (M_list (cdr lis) s)))
+       (cons (M_state_return (fir lis) s) (M_list (cdr lis) s)))
       ((and (eq? (type lis) 'if) (null? (cdddar lis)))
        (cons (M_state_if (fir lis) (sec lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'if)
@@ -64,12 +64,14 @@
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
-      )))
+      ((null? s) (list (variable) ()))
+      (else (cons (variable (car s)))))))
 
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
-      )))
+      ((null? s) (list (variable) (value)))
+      (else (list (cons variable (car s)) (cons value (cadr s)))))))
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
@@ -77,10 +79,14 @@
       )))
 
 (define M_state_return ;return exp
-  (lambda (exp)
+  (lambda (exp s)
     (cond
       ((null? exp) '())
-      (else (M_bool_op exp)))))
+      ((number? (M_bool_op exp)) (M_bool_op exp))
+      ((eq? (caar s) 'exp) (cadr s))
+      (else (M_state_return s (list (cdar) (cddr)))))))
+
+;return needs to account for (return x) where x is in the state ; <- the above may work
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s)
