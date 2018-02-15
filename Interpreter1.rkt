@@ -8,7 +8,8 @@
  ;   (parser filename)))
 
 ;Example list of statements:
-;((var x) (= x 10) (var y (+ (* 3 x) 5)) (while (!= (% y x) 3) (= y (+ y 1)))
+;((var x) (= x 10) (var y (+ (* 3 x) 5))
+;(while (!= (% y x) 3) (= y (+ y 1)))
 ;(if (> x y) (return x) (if (> (* x x) y) (return (* x x))
 ;(if (> (* x (+ x x)) y) (return (* x (+ x x))) (return (- y 1))))))
 
@@ -75,8 +76,10 @@
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
-    (cond
-      )))
+    (if (M_bool_op condit)
+        (M_state_while condit (cdr body) (M_list (car body) s))
+        ;how to modify condit when state changes? helper function maybe?-> takes in body and condit and sees if condit changes?
+        s)))
 
 (define M_state_return ;return exp
   (lambda (exp s)
