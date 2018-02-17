@@ -76,8 +76,8 @@
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
-      ((null? s) (list (list variable) (list value) ))
-      (else (cons (cons variable (car s)) (list (cons value (cadr s)))))
+      ((null? s) (list (list variable) (list (M_value_op value s)) ))
+      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s)))))
       )))
 (define M_state_assign ; set variable = exp in state
   (lambda (variable exp s)
@@ -85,15 +85,14 @@
       ((null? s) (/ 1 0)) ; error (?)
       ((null? (car s)) (/ 1 0)) ;error ( :) )
       ((equal? variable (caar s))
-       (list (car s) (cons (M_value_op exp) (cdadr s))))
+       (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s)))) )))
-                  ;(list (cons (cdadr s) (cadr (
                   )))))      
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
-    (if (M_bool_op condit)
+    (if (M_bool_op condit s)
         (M_state_while condit body (M_list body s))
         s)))
 
@@ -122,21 +121,42 @@
 ;M_value
 
 (define M_value_op
-  (lambda (lis)
+  (lambda (lis s)
     (cond
       ((null? lis) '())
+      ((number? lis) lis)
+      ((isvariable? lis s) (varvalue lis s))
       ((not (list? lis)) lis)
-      ((eq? (operator lis) '+) (+ (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
-      ((eq? (operator lis) '-) (- (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
-      ((eq? (operator lis) '*) (* (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
-      ((eq? (operator lis) '/) (quotient (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
-      ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis)) (M_value_op (operand2 lis))))
+      ((null? (cdr lis)) (M_value_op lis (car s)))
+      ((eq? (operator lis) '+) (+ (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '-) (- (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '*) (* (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '/) (quotient (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       (else (error 'badoperation "Unknown operator")))))
+
+(define isvariable? ; gives weather a variable was declared
+  (lambda (name s)
+    (cond
+      ((not (null? (car s)))
+       (if(eq? (caar s) name )
+          true
+          (isvariable? name (cons (cdar s) (list(cdadr s))))))
+      (else false))))
+
+(define varvalue ; gives the value of a variable given a state
+  (lambda (name s)
+    (cond
+      ((not (null? (car s)))
+       (if(eq? (caar s) name )
+          (caadr s)
+          (isvariable? name (cons (cdar s) (list(cdadr s))))))
+      (else (/ 5 0)))))
 
 ;M_boolean
 
 (define M_bool_op
-  (lambda (lis)
+  (lambda (lis s)
     (cond
       ((null? lis) '())
       ((not (list? lis)) lis)
@@ -158,11 +178,15 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
-;(M_list '( (var x) (var y) (var z) (= y 7) ) '())
+(define atom?
+  (lambda (x)
+    (and (not (pair? x)) (not (null? x)) (not (list? x))) ))
+
+(M_list '( (var x) (var y (+ 4 1)) (var z) (= y (+ y 2)) ) '())
 
 ;(M_state_assign 'y 10 (M_state_decl1 'y (M_state_decl2 'x 7 '())))
 
 
 ;(M_state_assign 'x 69 '((a b x c)(5 () 2 ())) )
 
-(M_state_assign 'y 7 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
+;(M_state_assign 'y 7 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
