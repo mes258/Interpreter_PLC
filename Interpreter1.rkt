@@ -69,7 +69,7 @@
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
-      ((null? s) (list (list variable) '() ))
+      ((null? s) (list (list variable) '(()) ))
       (else (cons (cons variable (car s)) (list (cons '() (cadr s)))))
       )))
 
