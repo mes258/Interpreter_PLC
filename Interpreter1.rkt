@@ -9,9 +9,11 @@
 
 ;Example list of statements:
 ;((var x) (= x 10) (var y (+ (* 3 x) 5))
-;(while (!= (% y x) 3) (= y (+ y 1)))
-;(if (> x y) (return x) (if (> (* x x) y) (return (* x x))
-;(if (> (* x (+ x x)) y) (return (* x (+ x x))) (return (- y 1))))))
+;  (while (!= (% y x) 3) (= y (+ y 1)))
+;  (if (> x y) (return x)
+;    (if (> (* x x) y) (return (* x x))
+;      (if (> (* x (+ x x)) y) (return (* x (+ x x)))
+;        (return (- y 1))))))
 
 ;I think we should do state in the form: ((x y ...) (5 12 ...)) so its easier
 ;going forward. 
@@ -26,7 +28,7 @@
   (lambda (lis s)
     (cond
       ((null? lis) s)
-      ((and (eq? (type lis) 'var) (null? (caddr lis)))
+      ((and (eq? (caar lis) 'var) (null? (cddar lis)))
        (cons (M_state_decl1 (fir lis) s) (M_list (cdr lis) s)))
       ((eq? (type lis) 'var)
        (cons (M_state_decl2 (fir lis) (sec lis) s) (M_list (cdr lis) s)))
@@ -67,26 +69,27 @@
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
-      ((null? s) (list (variable) ()))
-      (else (cons (variable (car s)))))))
+      ((null? s) (list variable '() ))
+      (else (cons (cons variable (car s)) (list (cons '() (cadr s)))))
+      )))
 
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
-      ((null? s) (list (variable) (value)))
-      (else (list (cons variable (car s)) (cons value (cadr s)))))))
-
+      ((null? s) (list variable value ))
+      (else (cons (cons variable (car s)) (list (cons value (cadr s)))))
+      )))
 (define M_state_assign ; set variable = exp in state
   (lambda (variable exp s)
     (cond
-      ((null? s) s)
-      ((eq? 'variable (caar s)) (cons exp (cddr lis)))
-      (else (M_state_assign variable exp (list (cdar s) (cddr s)))))))      
+      ((null? s) (/ 1 0)) ; error (?)
+      ((eq? 'variable (caar s)) (cons (M_value_op exp) (cdadr s)))
+      (else (cons (car s) (list (cons (cdaar s) (cdar (M_state_assign variable exp (cons (cadr s) (list (cdar s)))) ))))))      
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
     (if (M_bool_op condit)
-        (M_state_while condit (cdr body) (M_list (car body) s))
+        (M_state_while condit body (M_list body s))
         ;how to modify condit when state changes? helper function maybe?-> takes in body and condit and sees if condit changes?
         s)))
 (define while_helper
@@ -155,4 +158,4 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
-
+(M_list '( (var x) (var y) (var z) (= y 7) ) '())
