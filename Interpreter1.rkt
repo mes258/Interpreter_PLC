@@ -29,27 +29,27 @@
     (cond
       ((null? lis) s)
       ((and (eq? (caar lis) 'var) (null? (cddar lis)))
-       (cons (M_state_decl1 (fir lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) (M_state_decl1 (fir lis) s)))
       ((eq? (type lis) 'var)
-       (cons (M_state_decl2 (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s)))
       ((eq? (type lis) '=)
-       (cons (M_state_assign (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s)))
       ((eq? (type lis) 'while)
-       (cons (M_state_while (fir lis) (sec lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) s) (M_state_while (fir lis) (sec lis) s))
       ((eq? (type lis) 'return)
-       (cons (M_state_return (fir lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) (M_state_return (fir lis) s)))
       ((and (eq? (type lis) 'if) (null? (cdddar lis)))
-       (cons (M_state_if (fir lis) (sec lis) s) (M_list (cdr lis) s)))
-      ((eq? (type lis) 'if)
-       (cons (M_state_if_else (fir lis) (sec lis) (thr lis) s) (M_list (cdr lis) s)))
+       (M_list (cdr lis) (M_state_if (fir lis) (sec lis) s)))
+      ;((eq? (type lis) 'if)
+       ;(cons (M_state_if_else (fir lis) (sec lis) (thr lis) s) (M_list (cdr lis) s)))
       (else lis)))) ; Parameters should be all fixed. Need to confirm M_list (car lis) works given defined lis above. 
 
 ;abstraction for M_list
 ;note: we are ignoring the first part of the line, such as "while" or "if". In those cases, (fir lis) refers to <condtion>.
 (define type caar);type of call
-(define fir cadr);First parameter
-(define sec caddr);Second parameter
-(define thi cadddr);Third parameter
+(define fir cadar);First parameter
+(define sec caddar);Second parameter
+;(define thi cadddar);Third parameter
 
 
 ;need M_state for: 
@@ -69,22 +69,23 @@
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
-      ((null? s) (list variable '() ))
+      ((null? s) (list (list variable) '() ))
       (else (cons (cons variable (car s)) (list (cons '() (cadr s)))))
       )))
 
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
-      ((null? s) (list variable value ))
+      ((null? s) (list (list variable) (list value) ))
       (else (cons (cons variable (car s)) (list (cons value (cadr s)))))
       )))
 (define M_state_assign ; set variable = exp in state
   (lambda (variable exp s)
     (cond
       ((null? s) (/ 1 0)) ; error (?)
-      ((eq? 'variable (caar s)) (cons (M_value_op exp) (cdadr s)))
-      (else (cons (car s) (list (cons (cdaar s) (cdar (M_state_assign variable exp (cons (cadr s) (list (cdar s)))) ))))))      
+      ((null? (car s)) (/ 1 0)) ;error ( :) )
+      ((equal? variable (caar s)) (list (car s) (cons (M_value_op exp) (cdadr s))))
+      (else (cons (car s) (list (cons (cdar s) (cdar (M_state_assign variable exp (cons (cadr s) (list (cdar s)))) ))))))))      
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
@@ -159,3 +160,10 @@
 (define operand2 caddr)
 
 (M_list '( (var x) (var y) (var z) (= y 7) ) '())
+
+;(M_state_assign 'y 10 (M_state_decl1 'y (M_state_decl2 'x 7 '())))
+
+
+
+
+(M_state_assign 'y 10 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
