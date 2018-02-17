@@ -95,12 +95,7 @@
   (lambda (condit body s) 
     (if (M_bool_op condit)
         (M_state_while condit body (M_list body s))
-        ;how to modify condit when state changes? helper function maybe?-> takes in body and condit and sees if condit changes?
         s)))
-(define while_helper
-  (lambda (con body)
-    (cond
-      (()))))
 
 (define M_state_return ;return exp
   (lambda (exp s)
