@@ -84,12 +84,8 @@
     (cond
       ((null? s) (/ 1 0)) ; error (?)
       ((null? (car s)) (/ 1 0)) ;error ( :) )
-      ((equal? variable (caar s))
-       (list (car s) (cons (M_value_op exp) (cdadr s))))
-      (else
-       (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s)))) )))
-                  ;(list (cons (cdadr s) (cadr (
-                  )))))      
+      ((equal? variable (caar s)) (list (car s) (cons (M_value_op exp) (cdadr s))))
+      (else (cons (car s) (list (cons (cdar s) (cdar (M_state_assign variable exp (cons (cadr s) (list (cdar s)))) ))))))))      
 
 (define M_state_while ;modify the state as the body says
   (lambda (condit body s) 
@@ -163,11 +159,11 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
-;(M_list '( (var x) (var y) (var z) (= y 7) ) '())
+(M_list '( (var x) (var y) (var z) (= y 7) ) '())
 
 ;(M_state_assign 'y 10 (M_state_decl1 'y (M_state_decl2 'x 7 '())))
 
 
-;(M_state_assign 'x 69 '((a b x c)(5 () 2 ())) )
 
-(M_state_assign 'y 7 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
+
+(M_state_assign 'y 10 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
