@@ -35,7 +35,7 @@
       ((eq? (type lis) '=)
        (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s)))
       ((eq? (type lis) 'while)
-       (M_list (cdr lis) s) (M_state_while (fir lis) (sec lis) s))
+       (M_list (cdr lis) s) (M_state_while (fir lis) (cddar lis) s))
       ((eq? (type lis) 'return)
        (M_list (cdr lis) (M_state_return (fir lis) s)))
       ((and (eq? (type lis) 'if) (null? (cdddar lis)))
@@ -125,8 +125,9 @@
     (cond
       ((null? lis) '())
       ((number? lis) lis)
-      ((isvariable? lis s) (varvalue lis s))
-      ((not (list? lis)) lis)
+      ((not (null? (varvalue lis s))) (varvalue lis s))
+      ;((number? (car lis)) (car lis))
+      ((null? (car lis)) (varvalue lis s))
       ((null? (cdr lis)) (M_value_op lis (car s)))
       ((eq? (operator lis) '+) (+ (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '-) (- (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
@@ -150,27 +151,27 @@
       ((not (null? (car s)))
        (if(eq? (caar s) name )
           (caadr s)
-          (isvariable? name (cons (cdar s) (list(cdadr s))))))
-      (else (/ 5 0)))))
+          (varvalue name (cons (cdar s) (list(cdadr s))))))
+      (else '()))))
 
 ;M_boolean
-
+;make this compatible with #t and #f input values. 
 (define M_bool_op
   (lambda (lis s)
     (cond
       ((null? lis) '())
       ((not (list? lis)) lis)
-      ((eq? (operator lis) '==) (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
-      ((eq? (operator lis) '>=) (or (> (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))
-                                (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
-      ((eq? (operator lis) '<=) (or (< (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))
-                               (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
-      ((eq? (operator lis) '>) (> (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
-      ((eq? (operator lis) '<) (< (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
-      ((eq? (operator lis) '!=) (not (eq? (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis)))))
-      ((eq? (operator lis) '||) (or (M_bool_op (operand1 lis)) (M_bool_op (car (operand2 lis)))))
-      ((eq? (operator lis) '&&) (and (M_bool_op (operand1 lis)) (M_bool_op (operand2 lis))))
-      ((eq? (operator lis) '!) (not (M_bool_op (operand1 lis))))
+      ((eq? (operator lis) '==) (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '>=) (or (> (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))
+                                (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
+      ((eq? (operator lis) '<=) (or (< (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))
+                               (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
+      ((eq? (operator lis) '>) (> (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '<) (< (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '!=) (not (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
+      ((eq? (operator lis) '||) (or (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '&&) (and (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
+      ((eq? (operator lis) '!) (not (M_value_op (operand1 lis) s)))
       (else (M_value_op lis)))))
 
 ;abstraction for M_value_op and M_bool_op
@@ -182,7 +183,7 @@
   (lambda (x)
     (and (not (pair? x)) (not (null? x)) (not (list? x))) ))
 
-(M_list '( (var x) (var y (+ 4 1)) (var z) (= y (+ y 2)) ) '())
+(M_list '( (var x 11) (var y (+ 2 2)) (while (!= y x) (= y (+ y 1)))) '())
 
 ;(M_state_assign 'y 10 (M_state_decl1 'y (M_state_decl2 'x 7 '())))
 
