@@ -22,6 +22,8 @@
 ;(parser p1)
 (define lis (parser p1))
 
+(M_list lis '())
+
 ;need to pass lis into M_list
 ;go through the list of statements returned by interpret
 (define M_list
