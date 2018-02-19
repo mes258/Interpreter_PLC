@@ -3,28 +3,6 @@
 
 (require "simpleParser.scm")
 
-;(define interpret
- ; (lambda (filename)
- ;   (parser filename)))
-
-;Example list of statements:
-;((var x) (= x 10) (var y (+ (* 3 x) 5))
-;  (while (!= (% y x) 3) (= y (+ y 1)))
-;  (if (> x y) (return x)
-;    (if (> (* x x) y) (return (* x x))
-;      (if (> (* x (+ x x)) y) (return (* x (+ x x)))
-;        (return (- y 1))))))
-
-;I think we should do state in the form: ((x y ...) (5 12 ...)) so its easier
-;going forward. 
-(define p1 (build-path (current-directory) "code.txt"))
-
-;(parser p1)
-(define lis (parser p1))
-
-
-
-;need to pass lis into M_list
 ;go through the list of statements returned by interpret
 (define M_list
   (lambda (lis s)
@@ -45,8 +23,6 @@
        (if (null? (cdddar lis))
            (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s))
            (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s))))
-      ;((eq? (type lis) 'if)
-       ;(cons (M_state_if_else (fir lis) (sec lis) (thr lis) s) (M_list (cdr lis) s)))
       ((or (eq? (type lis) '==)
            (eq? (type lis) '!=)
            (eq? (type lis) '>=)
@@ -66,7 +42,6 @@
 (define type caar);type of call
 (define fir cadar);First parameter
 (define sec caddar);Second parameter
-;(define thi cadddar);Third parameter
 (define ifcond cadr)
 (define ifdo caddr)
 (define ifelsedo cadddr)
@@ -75,18 +50,6 @@
   (lambda (e s)
     (M_list (list e) s)))
 
-;need M_state for: 
-;variable declaration 	(var variable) or (var variable value)
-;assignment 	(= variable expression)
-;return 	(return expression)
-;if statement 	(if conditional then-statement optional-else-statement)
-;while statement 	(while conditional body-statement)
-
-;Need M_value for:
-;math operators
-
-;Need M_bool for:
-;conditonals 
 
 ;M_state
 (define M_state_decl1 ;add variable to state with value null
@@ -105,7 +68,7 @@
       (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s)))))
       )))
 
-(define M_state_assign ; set variable = exp in state
+(define M_state_assign ;set variable equal to exp in state
   (lambda (variable exp s)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
@@ -128,7 +91,6 @@
       ((number? (M_bool_op exp)) (M_bool_op exp))
       ((eq? (caar s) 'exp) (cadr s))
       (else (M_state_return s (list (cdar) (cddr)))))))
-;return needs to account for (return x) where x is in the state ; <- the above may work
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s)
@@ -136,7 +98,7 @@
         (M_list then (M_list (list condition) s))
         (M_list else (M_list (list condition) s)))))
 
-(define M_state_if ; if true, modify based on then. Otherwise do nothing
+(define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
   (lambda (condition then s)
     (if (M_bool_op condition (M_list (list condition) s))
         (M_list then (M_list (list condition) s))
@@ -145,7 +107,6 @@
 
 
 ;M_value
-
 (define M_value_op
   (lambda (lis s)
     (cond
@@ -172,7 +133,7 @@
            (eq? (operator lis) '<=)) (if (M_bool_op lis s) 'true 'false))
       (else (error (operator lis) "Unknown operator")))))
 
-(define varvalue ; gives the value of a variable given a state [if doesn't exist, gives null]
+(define varvalue ;gives the value of a variable given a state [if doesn't exist, gives null]
   (lambda (name s)
     (cond
       ((null? s) s)
@@ -183,7 +144,6 @@
       (else '()))))
 
 ;M_boolean
-;make this compatible with #t and #f input values. 
 (define M_bool_op
   (lambda (lis s)
     (cond
@@ -209,18 +169,9 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
-;(define atom?
-;  (lambda (x)
-;    (and (not (pair? x)) (not (null? x)) (not (list? x))) ))
-lis
+
+;Code to Run
+(define p1 (build-path (current-directory) "code.txt"))
+
+(define lis (parser p1))
 (M_list lis '())
-;(M_list '( (var x 11) (var y (+ 2 2)) (while (!= y x) (= y (+ y 1))) (if (== y 11) (= y 420) (= y 0) ) ) '())
-;(M_list '( (var x 9) (= x (+ x 1)) (if (== (= x (+ x 1)) 88) (var y 1) (var y 2)) (= y 1)) '())
-;(M_list '( (var x 10) (if (== x 17) (= x 99) (var y 4)) (while (!= (= x (+ 1 x)) 99) (= x x)) ) '())
-
-;(M_state_assign 'y 10 (M_state_decl1 'y (M_state_decl2 'x 7 '())))
-
-
-;(M_state_assign 'x 69 '((a b x c)(5 () 2 ())) )
-
-;(M_state_assign 'y 7 (M_state_decl1 'z (M_state_decl1 'y (M_state_decl1 'x '()))))
