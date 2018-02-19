@@ -2,6 +2,10 @@
 ;Vincent Portell, Michael Smith, Thomas Lerner
 ;EECS145 - Feb 19, 2018
 (require "simpleParser.scm")
+
+;To run:
+;Call (runfile `"<filename>") where <filename> is any .txt file path. 
+
 ;Functions below
 
 ;go through the list of statements returned by interpreter
