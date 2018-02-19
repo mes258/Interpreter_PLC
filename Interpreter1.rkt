@@ -100,18 +100,18 @@
   (lambda (variable value s)
     (cond
       ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
-      (else (cons (cons variable (car (M_state value s))) (list (cons (M_value_op value (M_state value s)) (cadr (M_state value s))))))
+      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s)))))
       )))
 
 (define M_state_assign ; set variable = exp in state
   (lambda (variable exp s)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
-      ((null? (car s)) (/ 1 0)) ;error ( :) )
+      ((null? (car s)) (/ variable 0)) ;error: variable not in state
       ((equal? variable (caar s))
-       (list (car (M_state exp s)) (cons (M_value_op exp (M_state exp s)) (cdadr (M_state exp s)))))
+       (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
-       (cons (car (M_state exp s)) (list (cons (caadr (M_state exp s)) (cadr (M_state_assign variable exp (cons (cdar (M_state exp s)) (list (cdadr (M_state exp s))))) ))))) )))
+       (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s)))) ))))) )))
 
 ;(M_state exp s)  <== TODO (important) (vincent's thing here)
 
@@ -159,7 +159,7 @@
       ((eq? (operator lis) '*) (* (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '/) (quotient (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
-      ((eq? (operator lis) '=) (M_value_op (operand2 lis) (M_state_assign (operand1 lis) (operand2 lis) s) ))
+      ((eq? (operator lis) '=) (M_value_op (operand2 lis) (M_state_assign (operand1 lis) (operand2 lis) (M_state (operand2 lis) s)) ))
       (else (error 'badoperation "Unknown operator")))))
 
 (define varvalue ; gives the value of a variable given a state [if doesn't exist, gives null]
