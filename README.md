@@ -16,4 +16,4 @@ Version 1 of the Interpreter by Vincent Portelli, Michael Smith, and Thomas Lern
 - [x] write M-bool
 - [x] Check that all the above work
 - [x] good absraction 
-- [ ] *states always need to change when there are assignments in expressions*
+- [x] *states always need to change when there are assignments in expressions*
