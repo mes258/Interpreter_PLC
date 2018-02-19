@@ -92,6 +92,7 @@
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
+      ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) '(()) ))
       (else (cons (cons variable (car s)) (list (cons '() (cadr s)))))
       )))
@@ -99,6 +100,7 @@
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
+      ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
       (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s)))))
       )))
@@ -107,13 +109,11 @@
   (lambda (variable exp s)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
-      ((null? (car s)) (/ variable 0)) ;error: variable not in state
+      ((null? (car s)) (error variable "variable not defined"))
       ((equal? variable (caar s))
        (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s)))) ))))) )))
-
-;(M_state exp s)  <== TODO (important) (vincent's thing here)
 
 (define M_state_while ;modify the state as the body says
   (lambda (condition body s) 
@@ -152,6 +152,7 @@
       ((null? lis) '())
       ((number? lis) lis)
       ((not (null? (varvalue lis s))) (varvalue lis s))
+      ((not (list? lis)) (error lis "undefined variable"))
       ((null? (car lis)) (varvalue lis s))
       ((null? (cdr lis)) (M_value_op lis (car s)))
       ((eq? (operator lis) '+) (+ (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
@@ -160,11 +161,17 @@
       ((eq? (operator lis) '/) (quotient (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '%) (remainder (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '=) (M_value_op (operand2 lis) (M_state_assign (operand1 lis) (operand2 lis) (M_state (operand2 lis) s)) ))
+      ((or (eq? (operator lis) '==)
+           (eq? (operator lis) '!=)
+           (eq? (operator lis) '!)
+           (eq? (operator lis) '||)
+           (eq? (operator lis) '&&)) (if (M_bool_op lis s) 'true 'false))
       (else (error 'badoperation "Unknown operator")))))
 
 (define varvalue ; gives the value of a variable given a state [if doesn't exist, gives null]
   (lambda (name s)
     (cond
+      ((null? s) s)
       ((not (null? (car s)))
        (if(eq? (caar s) name )
           (caadr s)
@@ -177,6 +184,8 @@
   (lambda (lis s)
     (cond
       ((null? lis) '())
+      ((eq? 'true lis) #t)
+      ((eq? 'false lis) #f)
       ((not (list? lis)) lis)
       ((eq? (operator lis) '==) (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '>=) (or (> (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))
