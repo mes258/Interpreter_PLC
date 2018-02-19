@@ -4,9 +4,7 @@
 (require "simpleParser.scm")
 
 ;To run:
-;Call (runfile `"<filename>") where <filename> is any .txt file path. 
-
-;Functions below
+;Call (runfile '"<filename>") where <filename> is any .txt file path. 
 
 ;go through the list of statements returned by interpreter
 (define M_list
@@ -55,14 +53,13 @@
   (lambda (e s)
     (M_list (list e) s)))
 
-
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
       ((not (null? (varvalue variable s))) (error variable "already declared"))
-      ((null? s) (list (list variable) '(()) ))
-      (else (cons (cons variable (car s)) (list (cons '() (cadr s))))))))
+      ((null? s) (list (list variable) list (noval)))
+      (else (cons (cons variable (car s)) (list (cons noval (cadr s))))))))
 
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
@@ -90,7 +87,7 @@
 (define M_state_return ;return exp
   (lambda (exp s)
     (cond
-      ((null? exp) '())
+      ((null? exp) exp)
       ((number? (M_bool_op exp)) (M_bool_op exp))
       ((eq? (caar s) 'exp) (cadr s))
       (else (M_state_return s (list (cdar) (cddr)))))))
@@ -111,7 +108,7 @@
 (define M_value_op ;returns the value of an expression
   (lambda (lis s)
     (cond
-      ((null? lis) '())
+      ((null? lis) lis)
       ((number? lis) lis)
       ((not (null? (varvalue lis s))) (varvalue lis s))
       ((not (list? lis)) (error lis "undefined variable"))
@@ -144,13 +141,15 @@
        (if(eq? (caar s) name )
           (caadr s)
           (varvalue name (cons (cdar s) (list(cdadr s))))))
-      (else '()))))
+      (else noval))))
+
+(define noval '())
 
 ;M_boolean
 (define M_bool_op ;Returns true or false given an expression and state
   (lambda (lis s)
     (cond
-      ((null? lis) '())
+      ((null? lis) lis)
       ((eq? 'true lis) #t)
       ((eq? 'false lis) #f)
       ((not (list? lis)) lis)
@@ -172,7 +171,8 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
+(define initState '())
 ;Code to Run
 (define runfile
   (lambda (filename)
-    (M_list (parser (build-path (current-directory) filename)) '())))
+    (M_list (parser (build-path (current-directory) filename)) initState)))
