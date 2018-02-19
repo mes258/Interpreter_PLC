@@ -48,29 +48,27 @@
 (define ifdo caddr)
 (define ifelsedo cadddr)
 
-(define M_state  ; for if you want to get the state that results from a single statement
+(define M_state  ;for if you want to get the state that results from a single statement
   (lambda (e s)
     (M_list (list e) s)))
 
 
-;M_state
+;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
   (lambda (variable s)
     (cond
       ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) '(()) ))
-      (else (cons (cons variable (car s)) (list (cons '() (cadr s)))))
-      )))
+      (else (cons (cons variable (car s)) (list (cons '() (cadr s))))))))
 
 (define M_state_decl2 ;add variable to state with value val
   (lambda (variable value s)
     (cond
       ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
-      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s)))))
-      )))
+      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
 
-(define M_state_assign ;set variable equal to exp in state
+(define M_state_assign ;set some variable in state equal to exp 
   (lambda (variable exp s)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
@@ -78,7 +76,7 @@
       ((equal? variable (caar s))
        (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
-       (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s)))) ))))) )))
+       (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
 
 (define M_state_while ;modify the state as the body says
   (lambda (condition body s) 
@@ -104,9 +102,7 @@
   (lambda (condition then s)
     (if (M_bool_op condition (M_list (list condition) s))
         (M_list then (M_list (list condition) s))
-        s
-        )))
-
+        s)))
 
 ;M_value
 (define M_value_op ;returns the value of an expression
@@ -132,7 +128,9 @@
            (eq? (operator lis) '>)
            (eq? (operator lis) '<)
            (eq? (operator lis) '>=)
-           (eq? (operator lis) '<=)) (if (M_bool_op lis s) 'true 'false))
+           (eq? (operator lis) '<=)) (if (M_bool_op lis s)
+                                         'true
+                                         'false))
       (else (error (operator lis) "Unknown operator")))))
 
 (define varvalue ;gives the value of a variable given a state [if doesn't exist, gives null]
@@ -155,9 +153,9 @@
       ((not (list? lis)) lis)
       ((eq? (operator lis) '==) (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '>=) (or (> (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))
-                                (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
+                                    (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
       ((eq? (operator lis) '<=) (or (< (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))
-                               (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
+                                    (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
       ((eq? (operator lis) '>) (> (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '<) (< (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s)))
       ((eq? (operator lis) '!=) (not (eq? (M_value_op (operand1 lis) s) (M_value_op (operand2 lis) s))))
@@ -170,7 +168,6 @@
 (define operator car)
 (define operand1 cadr)
 (define operand2 caddr)
-
 
 ;Code to Run
 (define p1 (build-path (current-directory) "code.txt")) ;Add any filepath in place of "code.txt" to run on that file.
