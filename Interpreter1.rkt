@@ -1,9 +1,11 @@
 ;Interpreter1 below:
 ;Vincent Portell, Michael Smith, Thomas Lerner
-
+;EECS145 - Feb 19, 2018
 (require "simpleParser.scm")
+;Functions below
+;See line 175 to add a new filename.
 
-;go through the list of statements returned by interpret
+;go through the list of statements returned by interpreter
 (define M_list
   (lambda (lis s)
     (cond
@@ -107,7 +109,7 @@
 
 
 ;M_value
-(define M_value_op
+(define M_value_op ;returns the value of an expression
   (lambda (lis s)
     (cond
       ((null? lis) '())
@@ -144,7 +146,7 @@
       (else '()))))
 
 ;M_boolean
-(define M_bool_op
+(define M_bool_op ;Returns true or false given an expression and state
   (lambda (lis s)
     (cond
       ((null? lis) '())
@@ -171,7 +173,7 @@
 
 
 ;Code to Run
-(define p1 (build-path (current-directory) "code.txt"))
+(define p1 (build-path (current-directory) "code.txt")) ;Add any filepath in place of "code.txt" to run on that file.
 
 (define lis (parser p1))
 (M_list lis '())
