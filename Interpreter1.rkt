@@ -3,7 +3,7 @@
 ;EECS145 - Feb 19, 2018
 (require "simpleParser.scm")
 ;Functions below
-;See line 175 to add a new filename.
+;See line 173 to add a new filename.
 
 ;go through the list of statements returned by interpreter
 (define M_list
