@@ -170,7 +170,12 @@
 (define operand2 caddr)
 
 ;Code to Run
-(define p1 (build-path (current-directory) "code.txt")) ;Add any filepath in place of "code.txt" to run on that file.
+(define runfile
+  (lambda (filename)
+    (M_list (parser (build-path (current-directory) filename)) '())))
 
-(define lis (parser p1))
-(M_list lis '())
+
+
+
+
+
