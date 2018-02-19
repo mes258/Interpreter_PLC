@@ -165,8 +165,12 @@
            (eq? (operator lis) '!=)
            (eq? (operator lis) '!)
            (eq? (operator lis) '||)
-           (eq? (operator lis) '&&)) (if (M_bool_op lis s) 'true 'false))
-      (else (error 'badoperation "Unknown operator")))))
+           (eq? (operator lis) '&&)
+           (eq? (operator lis) '>)
+           (eq? (operator lis) '<)
+           (eq? (operator lis) '>=)
+           (eq? (operator lis) '<=)) (if (M_bool_op lis s) 'true 'false))
+      (else (error (operator lis) "Unknown operator")))))
 
 (define varvalue ; gives the value of a variable given a state [if doesn't exist, gives null]
   (lambda (name s)
