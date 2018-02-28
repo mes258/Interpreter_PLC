@@ -1,5 +1,5 @@
-# Interpreter1_PLC
-Version 1 of the Interpreter by Vincent Portelli, Michael Smith, and Thomas Lerner.
+# Interpreter_PLC
+PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 
 ## How to run the Interpreter
 * Run `Interpreter1.rkt` and call `(runfile '"<filename>")` such as `(runfile '"code.txt")`. 
