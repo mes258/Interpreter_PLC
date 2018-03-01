@@ -7,8 +7,8 @@ PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 
 ## To do: 
 
-[ ] Make M_state tail recursive 
-[ ] Return 
-[ ] Break
-[ ] Continue 
-[ ] Throw
+- [ ] Make M_state tail recursive 
+- [ ] Return 
+- [ ] Break
+- [ ] Continue 
+- [ ] Throw
