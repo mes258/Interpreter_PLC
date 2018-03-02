@@ -41,7 +41,7 @@
       ((eq? (type lis) 'throw) (throw (fir lis) s))
       ((eq? (type lis) 'continue) (continue s))
       ((eq? (type lis) 'return) (M_value_op (cadar lis) s return continue throw break))
-      ((eq? (type lis) 'begin) (M_block s return continue throw break))
+      ((eq? (type lis) 'begin) (M_block (cdr lis) s return continue throw break))
       (else s))))
 
 ;abstraction for M_list
@@ -58,8 +58,8 @@
     (M_list (list e) s return continue throw break)))
 
 (define M_block ;evaluate a block of code
-  (lambda (s return continue throw break)
-    ))
+  (lambda (s lis return continue throw break)
+    (M_list s lis return continue throw break)))
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
