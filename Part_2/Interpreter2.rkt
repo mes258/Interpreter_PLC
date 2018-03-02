@@ -69,7 +69,7 @@
       ((null? s) (list (list variable) list (noval)))
       (else (cons (cons variable (car s)) (list (cons noval (cadr s))))))))
 
-(define M_decl1_cps
+(define M_decl1_cps;decl1 cps
   (lambda (var s return)
     (cond
       ((not (null? (varvalue var s))) (throw "Already declared"))
@@ -84,7 +84,7 @@
       ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
       (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
 
-(define M_decl2_cps
+(define M_decl2_cps;decl2 cps
   (lambda (variable value s return continue throw break)
     (cond
       ((not (null? (varvalue variable s))) (throw "already declared"))
@@ -102,15 +102,26 @@
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
 
-(define M_assign_cps
+(define M_assign_cps;assign cps
   (lambda (variable exp s return continue throw break)
-    ((null? s) (return s))));_____________--------------------------------------------------------------------------------finish assigncps
+    ((null? s) (return s))
+    ((null? (car s)) (throw "not defined"))
+    ((equal variable (caar s)) (return (list (car s) (cons (M_value_op exp s) (cdadr s)))))
+    (else (M_assign_cps variable exp (cons (cdar s) (list (cdadr s))) (lambda (v) (return (cons (car s) (list (cons (caadr s) (cadr v))))) continue throw break)))))
+    
 
 (define M_state_while ;modify the state as the body says
   (lambda (condition body s return continue throw break) 
     (if (M_bool_op condition s)
         (M_state_while condition body (M_list body (M_list (list condition) s)))
         (M_list (list condition) s))))
+
+(define M_while_cps;while cps
+  (lambda (condit body s return continue throw break)
+    (if (M_bool_op condit s)
+        (M_list (list condit) s (lambda (v1) (M_list body v1 (lambda (v2) (M_while_cps condit body v2 (lambda (v3) (return v3)) continue throw break)) continue throw break)) continue throw break)
+        (M_list (list condit) s (lambda (v) v) continue throw break))))
+
 
 (define M_state_return ;return exp
   (lambda (exp s return continue throw break)
