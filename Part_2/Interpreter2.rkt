@@ -8,24 +8,22 @@
 
 ;go through the list of statements returned by interpreter
 (define M_list
-  (lambda (lis s)
+  (lambda (lis s return continue throw break)
     (cond
       ((null? lis) s)
       ((and (not (list? (car lis))) (null? (cdr lis))) s)
-      ((and (eq? (type lis) 'var) (null? (cddar lis)))
-       (M_list (cdr lis) (M_state_decl1 (fir lis) s)))
       ((eq? (type lis) 'var)
-       (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s)))
+       (if (null? (cdddar lis))
+                  (M_list (cdr lis) (M_state_decl1 (fir lis) s return continue throw break) return continue throw break)
+                  (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s return continue throw break) return continue throw break)))
       ((eq? (type lis) '=)
-       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s)))
+       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s return continue throw break) return continue throw break))
       ((eq? (type lis) 'while)
-       (M_list (cdr lis) (M_state_while (fir lis) (cddar lis) s)))
-      ((eq? (type lis) 'return)
-       (M_value_op (cadar lis) s))
+       (M_list (cdr lis) (M_state_while (fir lis) (cddar lis) s return continue throw break) return continue throw break))
       ((eq? (type lis) 'if)
        (if (null? (cdddar lis))
-           (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s))
-           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s))))
+           (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return continue throw break) return continue throw break)
+           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s) return continue throw break) return continue throw break))
       ((or (eq? (type lis) '==)
            (eq? (type lis) '!=)
            (eq? (type lis) '>=)
@@ -38,6 +36,12 @@
            (eq? (type lis) '%)
            (eq? (type lis) '*))
        (M_list (cdr lis) (M_list (list (operand2 (car lis))) (M_list (list (operand1 (car lis))) s))))
+      ;new stuff below
+      ((eq? (type lis) 'break) (break s))
+      ((eq? (type lis) 'throw) (throw (fir lis) s))
+      ((eq? (type lis) 'continue) (continue s))
+      ((eq? (type lis) 'return) (M_value_op (cadar lis) s return continue throw break))
+      ((eq? (type lis) 'begin) (M_block s return continue throw break))
       (else s))))
 
 ;abstraction for M_list
@@ -50,26 +54,46 @@
 (define ifelsedo cadddr)
 
 (define M_state  ;for if you want to get the state that results from a single statement
-  (lambda (e s)
-    (M_list (list e) s)))
+  (lambda (e s return continue throw break)
+    (M_list (list e) s return continue throw break)))
+
+(define M_block ;evaluate a block of code
+  (lambda (s return continue throw break)
+    ))
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
-  (lambda (variable s)
+  (lambda (variable s return continue throw break)
     (cond
       ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) list (noval)))
       (else (cons (cons variable (car s)) (list (cons noval (cadr s))))))))
 
+(define M_decl1_cps
+  (lambda (var s return)
+    (cond
+      ((not (null? (varvalue var s))) (throw "Already declared"))
+      ((null? s) (return (list (lis var) list (noval))))
+      (else (cons (cons car (car s)) (list (cons noval (cadr s))))))))
+
+
 (define M_state_decl2 ;add variable to state with value val
-  (lambda (variable value s)
+  (lambda (variable value s return continue throw break)
     (cond
       ((not (null? (varvalue variable s))) (error variable "already declared"))
       ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
       (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
 
+(define M_decl2_cps
+  (lambda (variable value s return continue throw break)
+    (cond
+      ((not (null? (varvalue variable s))) (throw "already declared"))
+      ((null? s) (list (list variable) (return (list (M_value_op value (M_state value s))) )))
+      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
+
+
 (define M_state_assign ;set some variable in state equal to exp 
-  (lambda (variable exp s)
+  (lambda (variable exp s return continue throw break)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
       ((null? (car s)) (error variable "variable not defined"))
@@ -78,14 +102,18 @@
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
 
+(define M_assign_cps
+  (lambda (variable exp s return continue throw break)
+    ((null? s) (return s))));_____________--------------------------------------------------------------------------------finish assigncps
+
 (define M_state_while ;modify the state as the body says
-  (lambda (condition body s) 
+  (lambda (condition body s return continue throw break) 
     (if (M_bool_op condition s)
         (M_state_while condition body (M_list body (M_list (list condition) s)))
         (M_list (list condition) s))))
 
 (define M_state_return ;return exp
-  (lambda (exp s)
+  (lambda (exp s return continue throw break)
     (cond
       ((null? exp) exp)
       ((number? (M_bool_op exp)) (M_bool_op exp))
@@ -93,16 +121,18 @@
       (else (M_state_return s (list (cdar) (cddr)))))))
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
-  (lambda (condition then else s)
+  (lambda (condition then else s return continue throw break)
     (if (M_bool_op condition s)
         (M_list then (M_list (list condition) s))
         (M_list else (M_list (list condition) s)))))
 
 (define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
-  (lambda (condition then s)
+  (lambda (condition then s return continue throw break)
     (if (M_bool_op condition (M_list (list condition) s))
         (M_list then (M_list (list condition) s))
         s)))
+
+
 
 ;M_value
 (define M_value_op ;returns the value of an expression
@@ -173,6 +203,6 @@
 
 (define initState '())
 ;Code to Run
-(define runfile
+(define interpret
   (lambda (filename)
-    (M_list (parser (build-path (current-directory) filename)) initState)))
+    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v) (error "Not a valid continue")) (lambda (v env) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")))))
