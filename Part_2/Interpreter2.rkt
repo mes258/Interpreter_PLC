@@ -221,6 +221,10 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
+(define return
+  (lambda (var state)
+    (varvalue var state)))
+
 (define initState '())
 ;Code to Run
 (define interpret
