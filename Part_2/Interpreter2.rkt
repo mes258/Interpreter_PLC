@@ -216,4 +216,4 @@
 ;Code to Run
 (define interpret
   (lambda (filename)
-    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v) (error "Not a valid continue")) (lambda (v env) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")))))
+    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v) (error "Not a valid continue")) (lambda (v) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")))))
