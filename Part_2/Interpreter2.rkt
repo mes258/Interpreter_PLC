@@ -190,7 +190,10 @@
        (if(eq? (caar lis) name )
           (caadr lis)
           (checklayer name (cons (cdar lis) (list(cdadr lis))))))
-      (else '()))))
+      (else noval))))
+
+(define noval
+  '())
 
 ;M_boolean
 (define M_bool_op ;Returns true or false given an expression and state
