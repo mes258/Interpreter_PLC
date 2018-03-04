@@ -40,13 +40,8 @@
       ((eq? (type lis) 'break) (break s))
       ((eq? (type lis) 'throw) (throw (fir lis) s))
       ((eq? (type lis) 'continue) s)
-<<<<<<< HEAD
-      ((eq? (type lis) 'return) (M_value_op (cadar lis) s return continue throw break))
-      ((eq? (type lis) 'begin) (M_block (cdr lis) s return continue throw break))
-=======
       ((eq? (type lis) 'return) (M_value_op (cadar lis) s return throw break))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
->>>>>>> 3547a530441f7f131d90127de01b4229ced75b04
       (else s))))
 
 ;abstraction for M_list
