@@ -178,13 +178,19 @@
   (lambda (name s)
     (cond
       ((null? s) s)
-      ((not (null? (car s)))
-       (if(eq? (caar s) name )
-          (caadr s)
-          (varvalue name (cons (cdar s) (list(cdadr s))))))
-      (else noval))))
+      ((null? (car s)) (varvalue name (cdr s)))
+      ((null? (checklayer name (car s))) (varvalue name (cdr s)))
+      (else (checklayer name (car s))))))
 
-(define noval '())
+(define checklayer
+  (lambda (name lis)
+    (cond
+      ((null? lis) lis)
+      ((not (null? (car lis)))
+       (if(eq? (caar lis) name )
+          (caadr lis)
+          (checklayer name (cons (cdar lis) (list(cdadr lis))))))
+      (else '()))))
 
 ;M_boolean
 (define M_bool_op ;Returns true or false given an expression and state
