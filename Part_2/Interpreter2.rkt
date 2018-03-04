@@ -5,7 +5,7 @@
 
 ;To run:
 ;Call (runfile '"<filename>") where <filename> is any .txt file path. 
-
+;;To do: removed continue from parameters
 ;go through the list of statements returned by interpreter
 (define M_list
   (lambda (lis s return continue throw break)
@@ -39,7 +39,7 @@
       ;new stuff below
       ((eq? (type lis) 'break) (break s))
       ((eq? (type lis) 'throw) (throw (fir lis) s))
-      ((eq? (type lis) 'continue) (continue s))
+      ((eq? (type lis) 'continue) s)
       ((eq? (type lis) 'return) (M_value_op (cadar lis) s return continue throw break))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return continue throw break))
       (else s))))
