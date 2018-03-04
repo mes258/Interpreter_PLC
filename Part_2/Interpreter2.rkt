@@ -38,10 +38,11 @@
        (M_list (cdr lis) (M_list (list (operand2 (car lis))) (M_list (list (operand1 (car lis))) s))))
       ;new stuff below
       ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (throw (fir lis) s))
+      ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s))))
       ((eq? (type lis) 'continue) s)
       ((eq? (type lis) 'return) (M_value_op (cadar lis) s return throw break))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
+      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break))
       (else s))))
 
 ;abstraction for M_list
@@ -49,6 +50,7 @@
 (define type caar);type of call
 (define fir cadar);First parameter
 (define sec caddar);Second parameter
+(define thr cadddar);Third parameter
 (define ifcond cadr)
 (define ifdo caddr)
 (define ifelsedo cadddr)
@@ -60,6 +62,14 @@
 (define M_block ;evaluate a block of code
   (lambda (s lis return throw break)
     (M_list s lis return throw break)))
+
+(define addStateFrame
+  (lambda (s)
+    (cons '() s)))
+
+(define removeStateFrame
+  (lambda (s)
+    (cdr s)))
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
@@ -143,11 +153,11 @@
         (M_list then (M_list (list condition) s))
         s)))
 
-(define M_state_try_finally
+;(try body (catch (e) body) (finally body))
+(define M_state_try
   (lambda (body catch finally s return throw break)
-    (M_list body s return throw break)))
-
-
+    (M_list (cdr finally) (M_list body s return
+                                  (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
 
 ;M_value
 (define M_value_op ;returns the value of an expression
