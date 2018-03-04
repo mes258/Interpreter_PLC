@@ -143,6 +143,10 @@
         (M_list then (M_list (list condition) s))
         s)))
 
+(define M_state_try_finally
+  (lambda (body catch finally s return throw break)
+    (M_list body s return throw break)))
+
 
 
 ;M_value
@@ -192,8 +196,7 @@
           (checklayer name (cons (cdar lis) (list(cdadr lis))))))
       (else noval))))
 
-(define noval
-  '())
+(define noval '())
 
 ;M_boolean
 (define M_bool_op ;Returns true or false given an expression and state
