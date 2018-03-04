@@ -63,33 +63,20 @@
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
-  (lambda (variable s return throw break)
+  (lambda (var s)
     (cond
-      ((not (null? (varvalue variable s))) (error variable "already declared"))
-      ((null? s) (list (list variable) list (noval)))
-      (else (cons (cons variable (car s)) (list (cons noval (cadr s))))))))
-
-(define M_decl1_cps;decl1 cps
-  (lambda (var s return)
-    (cond
-      ((not (null? (varvalue var s))) (throw "Already declared"))
-      ((null? s) (return (list (lis var) list (noval))))
-      (else (cons (cons car (car s)) (list (cons noval (cadr s))))))))
-
+      ((null? s) (list (list (list var) (list noval))))
+      ((null? (car s)) (cons (list (list var) (list noval)) (car s)))
+      ((null? (checklayer var (car s))) (cons (cons (cons var (caar s)) (list (cons noval (cadar s)))) (cdr s)))
+      (else (error var "Already declared in this block")))))
 
 (define M_state_decl2 ;add variable to state with value val
-  (lambda (variable value s return throw break)
+  (lambda (var val s)
     (cond
-      ((not (null? (varvalue variable s))) (error variable "already declared"))
-      ((null? s) (list (list variable) (list (M_value_op value (M_state value s))) ))
-      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
-
-(define M_decl2_cps;decl2 cps
-  (lambda (variable value s return throw break)
-    (cond
-      ((not (null? (varvalue variable s))) (throw "already declared"))
-      ((null? s) (list (list variable) (return (list (M_value_op value (M_state value s))) )))
-      (else (cons (cons variable (car s)) (list (cons (M_value_op value s) (cadr s))))))))
+      ((null? s) (list (list (list var) (list val))))
+      ((null? (car s)) (cons (list (list var) (list val)) (car s)))
+      ((null? (checklayer var (car s))) (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s)))
+      (else (error var "Already declared in this block")))))
 
 
 (define M_state_assign ;set some variable in state equal to exp 
@@ -101,6 +88,7 @@
        (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
+
 
 (define M_assign_cps;assign cps
   (lambda (variable exp s return throw break)
