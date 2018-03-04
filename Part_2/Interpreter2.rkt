@@ -40,7 +40,7 @@
       ((eq? (type lis) 'break) (break s))
       ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s))))
       ((eq? (type lis) 'continue) s)
-      ((eq? (type lis) 'return) (M_value_op (cadar lis) s return throw break))
+      ((eq? (type lis) 'return) (return (M_value_op (fir lis) s) s))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
       ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break))
       (else s))))
@@ -120,15 +120,6 @@
         (M_list (list condit) s (lambda (v1) (M_list body v1 (lambda (v2) (M_while_cps condit body v2 (lambda (v3) (return v3)) throw break)) throw break)) throw break)
         (M_list (list condit) s (lambda (v) v) throw break))))
 
-
-(define M_state_return ;return exp
-  (lambda (exp s return throw break)
-    (cond
-      ((null? exp) exp)
-      ((number? (M_bool_op exp)) (M_bool_op exp))
-      ((eq? (caar s) 'exp) (cadr s))
-      (else (M_state_return s (list (cdar) (cddr)))))))
-
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break)
     (if (M_bool_op condition s)
@@ -144,7 +135,7 @@
 ;(try body (catch (e) body) (finally body))
 (define M_state_try
   (lambda (body catch finally s return throw break)
-    (M_list (cdr finally) (M_list body s return
+    (M_list (cdr finally) (M_list body s (lambda (v s))
                                   (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
 
 ;M_value
@@ -230,4 +221,4 @@
 ;Code to Run
 (define interpret
   (lambda (filename)
-    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v) (error "Not a valid continue")) (lambda (v) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")))))
+    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")))))
