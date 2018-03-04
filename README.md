@@ -8,7 +8,7 @@ PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 ## To do: 
 
 - [ ] Make M_state functions tail recursive: 
-	- [ ] M_list
+	- [ ] M_list - make sure this is call all functions in cps form
 	- [ ] M_state
 	- [x] M_state_decl1
 	- [x] _decl2
