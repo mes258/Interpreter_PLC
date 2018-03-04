@@ -8,22 +8,22 @@
 ;;To do: removed continue from parameters
 ;go through the list of statements returned by interpreter
 (define M_list
-  (lambda (lis s return throw break)
+  (lambda (lis s return throw break next)
     (cond
-      ((null? lis) s)
-      ((and (not (list? (car lis))) (null? (cdr lis))) s)
+      ((null? lis) (return s))
+      ((and (not (list? (car lis))) (null? (cdr lis))) (return s))
       ((eq? (type lis) 'var)
        (if (null? (cdddar lis))
-                  (M_list (cdr lis) (M_state_decl1 (fir lis) s return throw break) return throw break)
-                  (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s return throw break) return throw break)))
+                  (M_list (cdr lis) (M_state_decl1 (fir lis) s) return throw break (lambda (v) (next v)))
+                  (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s) return throw break (lambda (v) (next v)))))
       ((eq? (type lis) '=)
-       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s return throw break) return throw break))
+       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s (lambda (v1) v1)) return throw break (lambda (v2) (next v2))))
       ((eq? (type lis) 'while)
-       (M_list (cdr lis) (M_state_while (fir lis) (cddar lis) s return throw break) return throw break))
+       (M_list (cdr lis) (M_state_while (fir lis) (cddar lis) s return throw break) return throw break (lambda (v) (next v))))
       ((eq? (type lis) 'if)
        (if (null? (cdddar lis))
-           (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break) return throw break)
-           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s) return throw break) return throw break))
+           (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break) return throw break (lambda (v) (next v)))
+           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s return throw break) return throw break (lambda (v) (next v))))
       ((or (eq? (type lis) '==)
            (eq? (type lis) '!=)
            (eq? (type lis) '>=)
@@ -35,14 +35,14 @@
            (eq? (type lis) '/)
            (eq? (type lis) '%)
            (eq? (type lis) '*))
-       (M_list (cdr lis) (M_list (list (operand2 (car lis))) (M_list (list (operand1 (car lis))) s))))
+       (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
       ;new stuff below
       ((eq? (type lis) 'break) (break s))
       ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s))))
-      ((eq? (type lis) 'continue) s)
+      ((eq? (type lis) 'continue) (next s)
       ((eq? (type lis) 'return) (return (M_value_op (fir lis) s) s))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
-      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break))
+      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break next))
       (else s))))
 
 ;abstraction for M_list
@@ -90,7 +90,7 @@
 
 
 (define M_state_assign ;set some variable in state equal to exp 
-  (lambda (variable exp s return throw break)
+  (lambda (variable exp s return)
     (cond
       ((null? s) s) ;if it's not there, don't set anything
       ((null? (car s)) (error variable "variable not defined"))
@@ -121,7 +121,7 @@
         (M_list (list condit) s (lambda (v) v) throw break))))
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
-  (lambda (condition then else s return throw break)
+  (lambda (condition then else s return throw break next)
     (if (M_bool_op condition s)
         (M_list then (M_list (list condition) s))
         (M_list else (M_list (list condition) s)))))
@@ -134,10 +134,10 @@
 
 ;(try body (catch (e) body) (finally body))
 (define M_state_try
-  (lambda (body catch finally s return throw break)
+  (lambda (body catch finally s return throw break next)
     (M_list (cdr finally) (M_list body s (lambda (v s))
                                   (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
-
+;(lis s return throw break next)
 ;M_value
 (define M_value_op ;returns the value of an expression
   (lambda (lis s)
