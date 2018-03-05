@@ -14,8 +14,11 @@ PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 	- [x] _decl2
 	- [ ] _assign
 	- [x] _while
-	- [ ] _if_else - need to do if change M_list to be cps
-	- [ ] _if - need to do if change M_list to be cps
+	- [x] _if_else 
+	- [x] _if 
+	- [ ] _bool (need to modify format in the if statements, while and other places its called.)
+	- [ ] _value (need to modify format in the if statements, while and other places its called.)
+
 - [x] Return: lambda function: change return to accept two inputs, the variable name (what is being returned) and the state. The base return (initially passed into M_list) should just be (varvalue var s)
 - [ ] Break: lambda function
 - [x] Continue: not a lambda function. if a continue is hit in the block, stop evaluating the block and just return the state

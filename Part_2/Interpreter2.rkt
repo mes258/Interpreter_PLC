@@ -17,10 +17,11 @@
            (M_state_decl1 (fir lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
            (M_state_decl2 (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))))
       ((eq? (type lis) '=)
-       (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s (lambda (v1) v1)) return throw break (lambda (v2) (next v2))))
+       (M_state_assign (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next (v2))))))
       ((eq? (type lis) 'while)
-       (M_list (cdr lis) (M_state_while (fir lis) (cddar lis) s return throw break) return throw break (lambda (v) (next v))))
-      ((eq? (type lis) 'if)
+       (M_state_while (fir lis) (cddar lis) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
+
+       ((eq? (type lis) 'if)
        (if (null? (cdddar lis))
            (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break) return throw break (lambda (v) (next v)))
            (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s return throw break) return throw break (lambda (v) (next v))))
@@ -109,28 +110,27 @@
     
 
 (define M_state_while ;modify the state as the body says
-  (lambda (condition body s return throw break) 
+  (lambda (condition body s return throw break next) 
     (if (M_bool_op condition s)
         (M_state_while condition body (M_list body (M_list (list condition) s)))
         (M_list (list condition) s))))
 
 (define M_while_cps;while cps
-  (lambda (condit body s return throw break)
-    (if (M_bool_op condit s)
-        (M_list (list condit) s (lambda (v1) (M_list body v1 (lambda (v2) (M_while_cps condit body v2 (lambda (v3) (return v3)) throw break)) throw break)) throw break)
-        (M_list (list condit) s (lambda (v) v) throw break))))
+  (lambda (condit body s return throw break next)
+    (if (M_bool_op condition s)
+        (M_list (list condition) s return throw break (lambda (v1) (M_list body v1 return throw break (lambda (v2) (M_state_while condition body v2 return throw break (lambda (v3) (next v3)))))))
+        (M_list (list condition) s return throw break (lambda (v1) (next v1))))))
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break next)
     (if (M_bool_op condition s)
-        (M_list then (M_list (list condition) s))
-        (M_list else (M_list (list condition) s)))))
+        (M_list (list condition) s return throw break (lambda (v1) (M_list then v1 return throw break (lambda (v2) (next v2)))))
+        (M_list (list condition) s return throw break (lambda (v1) (M_list else v1 return throw break (lambda (v2) (next v2))))))))
 
 (define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
   (lambda (condition then s return throw break)
     (if (M_bool_op condition (M_list (list condition) s))
-        (M_list then (M_list (list condition) s))
-        s)))
+        (M_list (list condition) s return throw break (lambda (v1) (M_list then v1 return throw break (lambda (v2) (next v2))))))))
 
 ;(try body (catch (e) body) (finally body))
 (define M_state_try
