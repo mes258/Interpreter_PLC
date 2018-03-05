@@ -43,7 +43,7 @@
       ((eq? (type lis) 'continue) (next s)
       ((eq? (type lis) 'return) (return (M_value_op (fir lis) s) s))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
-      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break next))
+      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (next v))))
       (else s))))
 
 ;abstraction for M_list
@@ -57,11 +57,11 @@
 (define ifelsedo cadddr)
 
 (define M_state  ;for if you want to get the state that results from a single statement
-  (lambda (e s return throw break)
-    (M_list (list e) s return throw break)))
+  (lambda (e s return throw break next)
+    (M_list (list e) s return throw break next)))
 
 (define M_block ;evaluate a block of code
-  (lambda (s lis return throw break)
+  (lambda (s lis return throw break next)
     (M_list s lis return throw break)))
 
 (define addStateFrame
@@ -108,6 +108,9 @@
     ((equal variable (caar s)) (return (list (car s) (cons (M_value_op exp s) (cdadr s)))))
     (else (M_assign_cps variable exp (cons (cdar s) (list (cdadr s))) (lambda (v) (return (cons (car s) (list (cons (caadr s) (cadr v))))) throw break)))))
     
+(define return
+  (lambda (var state)
+    (varvalue var state)))
 
 (define M_state_while ;modify the state as the body says
   (lambda (condition body s return throw break next) 
@@ -212,10 +215,6 @@
 (define operator car)
 (define operand1 cadr)
 (define operand2 caddr)
-
-(define return
-  (lambda (var state)
-    (varvalue var state)))
 
 (define initState '())
 ;Code to Run
