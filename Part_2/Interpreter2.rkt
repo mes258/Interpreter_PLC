@@ -14,8 +14,8 @@
       ((and (not (list? (car lis))) (null? (cdr lis))) (return s))
       ((eq? (type lis) 'var)
        (if (null? (cdddar lis))
-                  (M_list (cdr lis) (M_state_decl1 (fir lis) s) return throw break (lambda (v) (next v)))
-                  (M_list (cdr lis) (M_state_decl2 (fir lis) (sec lis) s) return throw break (lambda (v) (next v)))))
+           (M_state_decl1 (fir lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
+           (M_state_decl2 (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))))
       ((eq? (type lis) '=)
        (M_list (cdr lis) (M_state_assign (fir lis) (sec lis) s (lambda (v1) v1)) return throw break (lambda (v2) (next v2))))
       ((eq? (type lis) 'while)
@@ -73,19 +73,19 @@
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
-  (lambda (var s)
+  (lambda (var s next)
     (cond
-      ((null? s) (list (list (list var) (list noval))))
-      ((null? (car s)) (cons (list (list var) (list noval)) (car s)))
-      ((null? (checklayer var (car s))) (cons (cons (cons var (caar s)) (list (cons noval (cadar s)))) (cdr s)))
+      ((null? s) (next (list (list (list var) (list noval)))))
+      ((null? (car s)) (next (cons (list (list var) (list noval)) (car s))))
+      ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons noval (cadar s)))) (cdr s))))
       (else (error var "Already declared in this block")))))
 
 (define M_state_decl2 ;add variable to state with value val
-  (lambda (var val s)
+  (lambda (var val s next)
     (cond
-      ((null? s) (list (list (list var) (list val))))
-      ((null? (car s)) (cons (list (list var) (list val)) (car s)))
-      ((null? (checklayer var (car s))) (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s)))
+      ((null? s) (next (list (list (list var) (list val)))))
+      ((null? (car s)) (next (cons (list (list var) (list val)) (car s))))
+      ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s))))
       (else (error var "Already declared in this block")))))
 
 
