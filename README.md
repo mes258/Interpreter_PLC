@@ -8,8 +8,8 @@ PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 ## To do: 
 
 - [ ] Make M_state functions tail recursive: 
-	- [ ] M_list - make sure this is call all functions in cps form
-	- [ ] M_state
+	- [x] M_list - make sure this is call all functions in cps form
+	- [x] M_state
 	- [x] M_block
 	- [x] M_state_decl1
 	- [x] _decl2
@@ -17,8 +17,8 @@ PLC Interpreter Project by Vincent Portelli, Michael Smith, and Thomas Lerner.
 	- [x] _while
 	- [x] _if_else 
 	- [x] _if 
-	- [ ] _bool (need to modify format in the if statements, while and other places its called.)
-	- [ ] _value (need to modify format in the if statements, while and other places its called.)
+	- [x] _bool (need to modify format in the if statements, while and other places its called.)
+	- [x] _value (need to modify format in the if statements, while and other places its called.)
 
 - [x] Return: lambda function: change return to accept two inputs, the variable name (what is being returned) and the state. The base return (initially passed into M_list) should just be (varvalue var s)
 - [ ] Break: lambda function
