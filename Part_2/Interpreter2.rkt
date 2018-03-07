@@ -1,11 +1,11 @@
-;Interpreter2 below:
+;Interpreter 2 below:
 ;Vincent Portell, Michael Smith, Thomas Lerner
 ;EECS145 - Feb 19, 2018
 (require "simpleParser.scm")
 
 ;To run:
-;Call (runfile '"<filename>") where <filename> is any .txt file path. 
-;;To do: removed continue from parameters
+;Call (runfile '"<filename>") where <filename> is any .txt file path.
+
 ;go through the list of statements returned by interpreter
 (define M_list
   (lambda (lis s return throw break next)
@@ -13,17 +13,17 @@
       ((null? lis) (return s))
       ((and (not (list? (car lis))) (null? (cdr lis))) (return s))
       ((eq? (type lis) 'var)
-       (if (null? (cdddar lis))
+       (if (null? (thr lis))
            (M_state_decl1 (fir lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
            (M_state_decl2 (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))))
       ((eq? (type lis) '=)
-       (M_state_assign (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next (v2))))))
+       (M_state_assign (fir lis) (sec lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next (v2)))))))
       ((eq? (type lis) 'while)
-       (M_state_while (fir lis) (sec lis) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
+       (M_state_while (fir lis) (sec lis) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2))))))
       ((eq? (type lis) 'if)
-       (if (null? (cdddar lis))
+       (if (null? (thr lis))
            (M_list (cdr lis) (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break) return throw break (lambda (v) (next v)))
-           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s return throw break) return throw break (lambda (v) (next v))))
+           (M_list (cdr lis) (M_state_if_else (ifcond (car lis)) (list (ifdo (car lis))) (list (ifelsedo (car lis))) s return throw break) return throw break (lambda (v) (next v)))))
       ((or (eq? (type lis) '==)
            (eq? (type lis) '!=)
            (eq? (type lis) '>=)
@@ -36,13 +36,12 @@
            (eq? (type lis) '%)
            (eq? (type lis) '*))
        (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
-      ;new stuff below
       ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s) next)))
-      ((eq? (type lis) 'continue) (next s)
+      ((eq? (type lis) 'throw) (M_value_op (fir lis) (removeStateFrame s) (lambda (v1) (throw v1))))
+      ((eq? (type lis) 'continue) (next s))
       ((eq? (type lis) 'return) (return (M_value_op (fir lis) s next) s))
-      ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
-      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (next v))))
+      ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break next))
+      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break next))
       (else s))))
 
 ;abstraction for M_list
@@ -55,6 +54,7 @@
 (define ifdo caddr)
 (define ifelsedo cadddr)
 
+;M_list and state helper functions
 (define M_state  ;for if you want to get the state that results from a single statement
   (lambda (e s return throw break next)
     (M_list (list e) s return throw break next)))
@@ -97,7 +97,7 @@
   (lambda (var state)
     (varvalue var state)))
 
-(define M_while_cps;while cps
+(define M_while_cps ;while cps
   (lambda (condit body s return throw break next)
     (if (M_bool_op condition s next)
         (M_list (list condition) s return throw break (lambda (v1) (M_list body v1 return throw break (lambda (v2) (M_state_while condition body v2 return throw break (lambda (v3) (next v3)))))))
@@ -114,7 +114,7 @@
     (if (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (next v2)))))
         (M_list (list condition) s return throw break (lambda (v1) (M_list then v1 return throw break (lambda (v2) (next v2))))))))
 
-(define M_state_try;Should work
+(define M_state_try ;Try catch finally
   (lambda (body catch finally s return throw break next)
     (M_list (cdr finally) (M_list body s (lambda (v s))
                                   (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
@@ -147,6 +147,7 @@
                                          (next 'false)))
       (else (error (operator lis) "Unknown operator")))))
 
+;M_value helper functions
 (define varvalue ;gives the value of a variable given a state [if doesn't exist, gives null]
   (lambda (name s)
     (cond
@@ -192,6 +193,7 @@
 (define operand2 caddr)
 
 (define initState '())
+
 ;Code to Run
 (define interpret
   (lambda (filename)
