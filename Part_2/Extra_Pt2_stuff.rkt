@@ -15,3 +15,11 @@
        (list (car s) (cons (M_value_op exp s) (cdadr s))))
       (else
        (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
+
+(define M_assign_cps;assign cps
+  (lambda (variable exp s return throw break next)
+    ((null? s) (return s))
+    ((null? (car s)) (throw "not defined"))
+    ((equal variable (caar s)) (return (list (car s) (cons (M_value_op exp s) (cdadr s)))))
+    (else (M_assign_cps variable exp (cons (cdar s) (list (cdadr s))) (lambda (v) (return (cons (car s) (list (cons (caadr s) (cadr v))))) throw break)))))
+    
