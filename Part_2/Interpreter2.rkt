@@ -38,9 +38,9 @@
        (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
       ;new stuff below
       ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s))))
+      ((eq? (type lis) 'throw) (throw (M_value_op (fir lis) (removeStateFrame s) next)))
       ((eq? (type lis) 'continue) (next s)
-      ((eq? (type lis) 'return) (return (M_value_op (fir lis) s) s))
+      ((eq? (type lis) 'return) (return (M_value_op (fir lis) s next) s))
       ((eq? (type lis) 'begin) (M_block (cdr lis) s return throw break))
       ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (next v))))
       (else s))))
@@ -88,58 +88,36 @@
       ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s))))
       (else (error var "Already declared in this block")))))
 
-
-(define M_state_assign ;set some variable in state equal to exp 
-  (lambda (variable exp s return)
-    (cond
-      ((null? s) s) ;if it's not there, don't set anything
-      ((null? (car s)) (error variable "variable not defined"))
-      ((equal? variable (caar s))
-       (list (car s) (cons (M_value_op exp s) (cdadr s))))
-      (else
-       (cons (car s) (list (cons (caadr s) (cadr (M_state_assign variable exp (cons (cdar s) (list (cdadr s))))))))))))
-
-
 (define M_assign_cps;assign cps
-  (lambda (variable exp s return throw break)
-    ((null? s) (return s))
-    ((null? (car s)) (throw "not defined"))
-    ((equal variable (caar s)) (return (list (car s) (cons (M_value_op exp s) (cdadr s)))))
-    (else (M_assign_cps variable exp (cons (cdar s) (list (cdadr s))) (lambda (v) (return (cons (car s) (list (cons (caadr s) (cadr v))))) throw break)))))
-    
+  (lambda (variable exp s return throw break next)
+    ;add code here
+    ))
+
 (define return ;return the value 
   (lambda (var state)
     (varvalue var state)))
 
-(define M_state_while ;modify the state as the body says
-  (lambda (condition body s return throw break next) 
-    (if (M_bool_op condition s)
-        (M_state_while condition body (M_list body (M_list (list condition) s)))
-        (M_list (list condition) s))))
-
 (define M_while_cps;while cps
   (lambda (condit body s return throw break next)
-    (if (M_bool_op condition s)
+    (if (M_bool_op condition s next)
         (M_list (list condition) s return throw break (lambda (v1) (M_list body v1 return throw break (lambda (v2) (M_state_while condition body v2 return throw break (lambda (v3) (next v3)))))))
         (M_list (list condition) s return throw break (lambda (v1) (next v1))))))
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break next)
-    (if (M_bool_op condition s)
+    (if (M_bool_op condition s next)
         (M_list (list condition) s return throw break (lambda (v1) (M_list then v1 return throw break (lambda (v2) (next v2)))))
         (M_list (list condition) s return throw break (lambda (v1) (M_list else v1 return throw break (lambda (v2) (next v2))))))))
 
 (define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
-  (lambda (condition then s return throw break)
-    (if (M_bool_op condition (M_list (list condition) s))
+  (lambda (condition then s return throw break next)
+    (if (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (next v2)))))
         (M_list (list condition) s return throw break (lambda (v1) (M_list then v1 return throw break (lambda (v2) (next v2))))))))
 
-;(try body (catch (e) body) (finally body))
-(define M_state_try
+(define M_state_try;Should work
   (lambda (body catch finally s return throw break next)
     (M_list (cdr finally) (M_list body s (lambda (v s))
                                   (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
-;(lis s return throw break next)
 ;M_value
 (define M_value_op ;returns the value of an expression
   (lambda (lis s next)
