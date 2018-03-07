@@ -49,7 +49,9 @@
 (define type caar);type of call
 (define fir cadar);First parameter
 (define sec caddar);Second parameter
-(define thr cadddar);Third parameter
+(define thr
+  (lambda (l)
+  (car (cdddar l))));Third parameter
 (define ifcond cadr)
 (define ifdo caddr)
 (define ifelsedo cadddr)
@@ -91,6 +93,7 @@
 (define M_assign_cps;assign cps
   (lambda (variable exp s return throw break next)
     ;add code here
+    (next 0)
     ))
 
 (define return ;return the value 
@@ -116,8 +119,10 @@
 
 (define M_state_try ;Try catch finally
   (lambda (body catch finally s return throw break next)
-    (M_list (cdr finally) (M_list body s (lambda (v s))
-                                  (lambda (v) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw) return break throw)) break) return throw break)))
+    (M_list (cdr finally) (M_list body s
+                                  (lambda (v s)
+                                    (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw next) return throw break next))
+                                  throw break next) return throw break next)))
 ;M_value
 (define M_value_op ;returns the value of an expression
   (lambda (lis s next)
