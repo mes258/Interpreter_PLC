@@ -90,11 +90,13 @@
       ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s))))
       (else (error var "Already declared in this block")))))
 
-(define M_assign_cps;assign cps
-  (lambda (variable exp s return throw break next)
-    ;add code here
-    (next 0)
-    ))
+(define M_assign_cps ;assign cps
+  (lambda (var expr s return)
+    (cond
+      ((null? s) (error var "Not declared yet"))
+      ((null? (caar s)) (M_assign_cps var expr (cdr s) (lambda (v) (return (cons (car s) v)))))
+      ((equal? var (caaar s)) (return (cons (list (caar s) (cons (M_value_op expr s) (cdadar s))) (cdr s))))
+      (else (M_assign_cps var expr (cons (list (cdaar s) (cdadar s)) (cdr s)) (lambda (v) (return (cons (list (cons (caaar s) (caar v)) (cons (caadar s) (cadar v))) (cdr v)))))))))
 
 (define return ;return the value 
   (lambda (var state)
