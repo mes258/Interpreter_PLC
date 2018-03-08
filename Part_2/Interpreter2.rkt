@@ -94,6 +94,7 @@
   (lambda (var expr s return)
     (cond
       ((null? s) (error var "Not declared yet"))
+      ((null? (car s)) (M_assign_cps var expr (cdr s) (lambda (v) (return (cons (car s) v)))))
       ((null? (caar s)) (M_assign_cps var expr (cdr s) (lambda (v) (return (cons (car s) v)))))
       ((equal? var (caaar s)) (return (cons (list (caar s) (cons (M_value_op expr s) (cdadar s))) (cdr s))))
       (else (M_assign_cps var expr (cons (list (cdaar s) (cdadar s)) (cdr s)) (lambda (v) (return (cons (list (cons (caaar s) (caar v)) (cons (caadar s) (cadar v))) (cdr v)))))))))
