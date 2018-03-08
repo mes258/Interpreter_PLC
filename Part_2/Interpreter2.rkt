@@ -4,7 +4,7 @@
 (require "simpleParser.scm")
 
 ;To run:
-;Call (runfile '"<filename>") where <filename> is any .txt file path.
+;Call (interpret '"<filename>") where <filename> is any .txt file path.
 
 ;go through the list of statements returned by interpreter
 (define M_list
