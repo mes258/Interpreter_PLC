@@ -42,7 +42,7 @@
        (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
       ((eq? (type lis) '!) (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
       ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (M_value_op (fir lis) (removeStateFrame s) (lambda (v1) (throw v1 s))))
+      ((eq? (type lis) 'throw) (M_value_op (fir lis) s (lambda (v1) (throw v1 s))))
       ((eq? (type lis) 'continue) (next s))
       ((eq? (type lis) 'return) (return (M_value_op (fir lis) s next) s next))
       ((eq? (type lis) 'begin) (M_block (cdar lis) s return throw break (lambda (v1) (M_list (cdr lis) (remove_frame v1) return throw break next))))
@@ -115,7 +115,7 @@
   (lambda (condition body s return throw break next)
     (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
                                                                                                         (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) v3 return throw break (lambda (v4) (M_while_cps condition body v4 return throw break next)))))
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (removeStateFrame v3))))))))))
+                                                                                                        (M_list (list condition) s return throw break (lambda (v3) v3)))))))))
 
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
