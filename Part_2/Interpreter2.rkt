@@ -140,7 +140,7 @@
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         (M_list body (addStateFrame s)
                 (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next (removeStateFrame s4))))) ))))
+                (lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next s4))))) )))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         )))
