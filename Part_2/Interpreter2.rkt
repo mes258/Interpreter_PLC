@@ -42,9 +42,9 @@
        (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
       ((eq? (type lis) '!) (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
       ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (M_value_op (fir lis) s (lambda (v1) (throw v1 s))))
+      ((eq? (type lis) 'throw) (throw (fir lis) s))
       ((eq? (type lis) 'continue) (next s))
-      ((eq? (type lis) 'return) (return (M_value_op (fir lis) s next) s next))
+      ((eq? (type lis) 'return) (return (fir lis) s next))
       ((eq? (type lis) 'begin) (M_block (cdar lis) s return throw break (lambda (v1) (M_list (cdr lis) (remove_frame v1) return throw break next))))
       ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (M_list (cdr lis) v return throw break next) )))
       (else s))))
@@ -79,7 +79,7 @@
 
 (define removeStateFrame
   (lambda (s)
-    (cdr s)))
+    (car s)))
 
 ;M_state for different operations
 (define M_state_decl1 ;add variable to state with value null
@@ -113,34 +113,36 @@
 
 (define M_while_cps ;while cps
   (lambda (condition body s return throw break next)
-    (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) v3 return throw break (lambda (v4) (M_while_cps condition body v4 return throw break next)))))
+    (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition s (lambda (v2) (if v2
+                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) (addStateFrame v3) return throw break (lambda (v4) (M_while_cps condition body (removeStateFrame v4) return throw break next)))))
                                                                                                         (M_list (list condition) s return throw break (lambda (v3) v3)))))))))
 
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break next)
     (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list then v3 return throw break (lambda (v4) (next v4)))))
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list else v3 return throw break (lambda (v4) (next v4))))))))))))
+                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list then v3 return throw break (lambda (v4) (next v4)))))
+                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list else v3 return throw break (lambda (v4) (next v4))))))))))))
 
 (define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
   (lambda (condition then s return throw break next)
     (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list then v3 return throw break (lambda (v4) (next v4)))))
-                                                                                                        (next s))))))))
+                                                                                                        (M_list then v1 return throw break (lambda (v2) (next v2)))
+                                                                                                        (next v1))))))))
 
 (define M_state_try ;Try catch finally
   (lambda (body catch finally s return throw break next)
     (if (not (null? finally))
         (M_list body (addStateFrame s)
                 (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))
+                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value) (M_state_decl2 (cadr catch) value s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))))
+               ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         (M_list body (addStateFrame s)
                 (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next s4))))) )))
+                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value) (M_state_decl2 (cadr catch) value s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))))
+               ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))) )))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         )))
