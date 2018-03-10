@@ -44,7 +44,7 @@
       ((eq? (type lis) 'break) (break s))
       ((eq? (type lis) 'throw) (throw (fir lis) s))
       ((eq? (type lis) 'continue) (next s))
-      ((eq? (type lis) 'return) (return (fir lis) s next))
+      ((eq? (type lis) 'return) (return (fir lis) s (lambda (v) v)))
       ((eq? (type lis) 'begin) (M_block (cdar lis) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
       ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (M_list (cdr lis) v return throw break next) )))
       (else s))))
