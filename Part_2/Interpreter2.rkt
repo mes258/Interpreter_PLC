@@ -1,6 +1,6 @@
 ;Interpreter 2 below:
 ;Vincent Portell, Michael Smith, Thomas Lerner
-;EECS145 - Feb 19, 2018
+;EECS345 - March 9, 2018
 (require "simpleParser.scm")
 
 ;To run:
