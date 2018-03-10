@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 var x = 0;
 var y = x;
 var z = y;
@@ -17,6 +18,22 @@ while (1 == 1) {
       continue;
     else
       break;
+=======
+var x = 10;
+var result = 1;
+
+try {
+  while (x < 10000) {
+     result = result - 1;
+     x = x + 10;
+
+     if (x > 1000) {
+       throw x;
+     }
+     else if (x > 100) {
+        break;
+     }
+>>>>>>> dae7b393141aac6606c739043dbdfaf02ff542f0
   }
   x = x + 1;
   if (x > 6)
@@ -24,4 +41,11 @@ while (1 == 1) {
   else
     continue;
 }
+<<<<<<< HEAD
 return x * 100 + y * 10 + z;
+=======
+finally {
+  result = result + x;
+}
+return result;
+>>>>>>> dae7b393141aac6606c739043dbdfaf02ff542f0
