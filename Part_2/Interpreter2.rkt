@@ -15,12 +15,11 @@
       ((eq? (type lis) 'var)
        (if (null? (cddar lis))
            (M_state_decl1 (fir lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
-           ;(M_state_decl2 (fir lis) (M_value_op (sec lis) s next) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
            (M_value_op (sec lis) s (lambda (value) (M_state_decl2 (fir lis) value s (lambda (v1) (M_list (cdr lis) v1 return throw break next)))))))
       ((eq? (type lis) '=)
-       (M_value_op (sec lis) s (lambda (v1) (M_assign_cps (fir lis) v1 s (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
+       (M_value_op (sec lis) s (lambda (v1) (M_state_assign (fir lis) v1 s (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
       ((eq? (type lis) 'while)
-       (M_while_cps (fir lis) (sec lis) s return throw (lambda (vx) (M_list (cdr lis) vx return throw break next)) (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
+       (M_state_while (fir lis) (sec lis) s return throw (lambda (vx) (M_list (cdr lis) vx return throw break next)) (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
       ((eq? (type lis) 'if)
        (if (null? (cdddar lis))
            (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
@@ -49,8 +48,6 @@
       ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (M_list (cdr lis) v return throw break next) )))
       (else s))))
 
-
-
 ;abstraction for M_list
 ;note: we are ignoring the first part of the line, such as "while" or "if". In those cases, (fir lis) refers to <condtion>.
 (define type caar);type of call
@@ -63,7 +60,7 @@
 (define ifdo caddr)
 (define ifelsedo cadddr)
 
-;M_list and state helper functions
+;M_list helper functions
 (define M_state  ;for if you want to get the state that results from a single statement
   (lambda (e s return throw break next)
     (M_list (list e) s return throw break next)))
@@ -72,11 +69,11 @@
   (lambda (lis s return throw break next)
     (M_list lis (addStateFrame s) return throw break (lambda (v) (next (removeStateFrame v))))))
 
-(define addStateFrame
+(define addStateFrame ;Add an empty state when entering a new block
   (lambda (s)
     (cons '() s)))
 
-(define removeStateFrame
+(define removeStateFrame ;Remove the top state when leaving a block
   (lambda (s)
     (cdr s)))
 
@@ -97,25 +94,24 @@
       ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s))))
       (else (error var "Already declared in this block")))))
 
-(define M_assign_cps ;assign cps
+(define M_state_assign ;assign cps
   (lambda (var expr s next)
     (cond
       ((null? s) (error var "Not declared yet"))
-      ((null? (car s)) (M_assign_cps var expr (cdr s) (lambda (v) (next(cons (car s) v)))))
-      ((null? (caar s)) (M_assign_cps var expr (cdr s) (lambda (v) (next (cons (car s) v)))))
+      ((null? (car s)) (M_state_assign var expr (cdr s) (lambda (v) (next(cons (car s) v)))))
+      ((null? (caar s)) (M_state_assign var expr (cdr s) (lambda (v) (next (cons (car s) v)))))
       ((equal? var (caaar s)) (M_value_op expr s (lambda (v) (next (cons (list (caar s) (cons v (cdadar s))) (cdr s))))))
-      (else (M_assign_cps var expr (cons (list (cdaar s) (cdadar s)) (cdr s)) (lambda (v) (next (cons (list (cons (caaar s) (caar v)) (cons (caadar s) (cadar v))) (cdr v)))))))))
+      (else (M_state_assign var expr (cons (list (cdaar s) (cdadar s)) (cdr s)) (lambda (v) (next (cons (list (cons (caaar s) (caar v)) (cons (caadar s) (cadar v))) (cdr v)))))))))
 
 (define return ;return the value 
   (lambda (var state next)
     (M_value_op var state next)))
 
-(define M_while_cps ;while cps
+(define M_state_while ;while in cps form
   (lambda (condition body s return throw break next)
     (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition s (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) v3 return throw break (lambda (v4) (M_while_cps condition body v4 return throw break next)))))
+                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) v3 return throw break (lambda (v4) (M_state_while condition body v4 return throw break next)))))
                                                                                                         (M_list (list condition) s return throw break next))))))))
-
 
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break next)
@@ -129,7 +125,7 @@
                                                                                                         (M_list then v1 return throw break next)
                                                                                                         (next v1))))))))
 
-(define M_state_try ;Try catch finally
+(define M_state_try ;Try, catch, finally
   (lambda (body catch finally s return throw break next)
     (if (not (null? finally))
         (M_list body (addStateFrame s)
@@ -139,7 +135,6 @@
                                                   (M_list (caddr catch) s2 return throw break (lambda (s3)
                                                     (M_list (cadr finally) s3 return throw break (lambda (s4)
                                                       (next (removeStateFrame s4)))))))))))
-               ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         (M_list body (addStateFrame s)
@@ -149,14 +144,9 @@
                                                                                           (M_list (caddr catch) s2 return throw break (lambda (s3)
                                                                                                                                       (M_list finally s3 return throw break (lambda (s4)
                                                                                                                                                                                      (next (removeStateFrame s4)))))))))))
-               ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))) )))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
-                (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
-        )))
+                (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))))))
                             
-    ;(M_list body s (lambda (v s) (M_list (thr catch) (M_state_decl2 (car (sec catch)) v (addStateFrame s) return break throw next) return throw break next))
-     ;       throw break next) return throw break next)))
-;              (lambda (lis s return throw break next)
 ;M_value
 (define M_value_op ;returns the value of an expression
   (lambda (lis s next)
@@ -168,18 +158,15 @@
       ((eq? 'false lis) (next 'false))
       ((eq? #t lis) (next 'true))
       ((eq? #f lis) (next 'false))
-      
       ((not (null? (varvalue lis s))) (next (varvalue lis s)))
-      ((not (list? lis)) (error x "undefined variable"))
+      ((not (list? lis)) (error s "undefined variable"))
       ((null? (car lis)) (next (varvalue lis s)))
-      
-      ;((null? (cdr lis)) (next (M_value_op lis (car s) next)))
       ((eq? (operator lis) '+) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (+ v1 v2)))))))
       ((eq? (operator lis) '-) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (- v1 v2)))))))
       ((eq? (operator lis) '*) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (* v1 v2)))))))
       ((eq? (operator lis) '/) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (quotient v1 v2)))))))
       ((eq? (operator lis) '%) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (remainder v1 v2)))))))
-      ((eq? (operator lis) '=) (M_state (operand2 lis) s return throw break (lambda (v1) (M_assign_cps (operand1 lis) (operand2 lis) v1 return throw break (lambda (v2) (M_value_op (operand2 lis) v2 next))))))
+      ((eq? (operator lis) '=) (M_state (operand2 lis) s return throw break (lambda (v1) (M_state_assign (operand1 lis) (operand2 lis) v1 return throw break (lambda (v2) (M_value_op (operand2 lis) v2 next))))))
       ((or (eq? (operator lis) '==)
            (eq? (operator lis) '!=)
            (eq? (operator lis) '!)
@@ -188,9 +175,7 @@
            (eq? (operator lis) '>)
            (eq? (operator lis) '<)
            (eq? (operator lis) '>=)
-           (eq? (operator lis) '<=)) (M_bool_op lis s (lambda (v) (if v
-                                                                      (next 'true)
-                                                                      (next 'false)))))
+           (eq? (operator lis) '<=)) (M_bool_op lis s (lambda (v) (if v (next 'true) (next 'false)))))
       (else (error (operator lis) "Unknown operator")))))
 
 ;M_value helper functions
@@ -203,11 +188,6 @@
       ((equal? name (caaar s)) (caadar s))
       (else (varvalue name (cons (list (cdaar s) (cdadar s)) (cdr s)))))))
 
-     ; ((null? s) s)
-      ;((null? (car s)) (varvalue name (cdr s)))
-     ; ((null? (checklayer name (car s))) (varvalue name (cdr s)))
-      ;(else (checklayer name (car s))))))
-
 (define checklayer ;varvalue within a single frame
   (lambda (name lis)
     (cond
@@ -218,6 +198,7 @@
           (checklayer name (cons (cdar lis) (list(cdadr lis))))))
       (else noval))))
 
+;If the state has no value, it is an empty list
 (define noval '())
 
 ;M_boolean
@@ -244,11 +225,10 @@
 (define operand1 cadr)
 (define operand2 caddr)
 
+;The initial state is a null list
 (define initState '())
 
-;Code to Run
+;Code to Run - run this by calling: (interpret "code.txt") or with the path to some other file
 (define interpret
   (lambda (filename)
     (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
-
-;(interpret "code.txt")
