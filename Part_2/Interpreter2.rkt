@@ -120,8 +120,8 @@
 (define M_state_if_else ;check the condition and modify s based on the value of condition 
   (lambda (condition then else s return throw break next)
     (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list then v3 return throw break next)))
-                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list else v3 return throw break next))))))))))
+                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list (list then) v3 return throw break next)))
+                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list (list else) v3 return throw break next))))))))))
 
 (define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
   (lambda (condition then s return throw break next)
@@ -134,16 +134,16 @@
     (if (not (null? finally))
         (M_list body (addStateFrame s)
                 (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value) (M_state_decl2 (cadr catch) value s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))))
+                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value) (M_state_decl2 (caadr catch) value s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))))
                ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (thr catch) s2 return throw break (lambda (s3) (M_list (cadr finally) s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
                 (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
         (M_list body (addStateFrame s)
                 (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
                 (lambda (v1 s1) (M_value_op v1 s1 (lambda (value)
-                                                    (M_state_decl2 (cadr catch) value s (lambda (s2)
-                                                                                          (M_list (thr catch) s2 return throw break (lambda (s3)
-                                                                                                                                      (M_list (cadr finally) s3 return throw break (lambda (s4)
+                                                    (M_state_decl2 (caadr catch) value s (lambda (s2)
+                                                                                          (M_list (caddr catch) s2 return throw break (lambda (s3)
+                                                                                                                                      (M_list finally s3 return throw break (lambda (s4)
                                                                                                                                                                                      (next (removeStateFrame s4)))))))))))
                ;(lambda (v1 s1) (M_state_decl2 (caadr catch) v1 s (lambda (s2) (M_list (caddr catch) s2 return throw break (lambda (s3) (M_list finally s3 return throw break (lambda (s4) (next (removeStateFrame s4)))))) )))
                 (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
@@ -166,7 +166,7 @@
       ((eq? #f lis) (next 'false))
       
       ((not (null? (varvalue lis s))) (next (varvalue lis s)))
-      ((not (list? lis)) (error lis "undefined variable"))
+      ((not (list? lis)) (error x "undefined variable"))
       ((null? (car lis)) (next (varvalue lis s)))
       
       ;((null? (cdr lis)) (next (M_value_op lis (car s) next)))
