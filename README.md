@@ -29,7 +29,7 @@ function main () {          =>   (function main () ((var x 10) (var y 15) (retur
   var y = 15;
   return gcd(x, y);
 }
-```
+
 	- [ ] Base layer of state is global vars and functions
 	- [ ] M_value for calling a function
 		- [ ] create a function environment using the closure function on the current environment 
