@@ -43,7 +43,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
-      ((eq? 'funcall 
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment return break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
@@ -53,7 +53,8 @@
 
 ;Add a new function to a state
 (define interpret-function
-  (lambda (statement environment next)))
+  (lambda (statement environment next)
+    '()))
 
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
