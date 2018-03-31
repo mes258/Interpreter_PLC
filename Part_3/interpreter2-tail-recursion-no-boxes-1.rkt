@@ -53,7 +53,7 @@
 ;Add a new function to a state
 (define interpret-function
   (lambda (statement environment next)
-    
+    ((next insert (get-function-var statement) (get-function-value statement) environment))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -214,6 +214,8 @@
 ; these helper functions define the parts of the various statement types
 (define statement-type operator)
 (define get-expr operand1)
+(define get-function-var operand1)
+(define get-function-value operand2)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
 (define exists-declare-value? exists-operand2?)
@@ -236,6 +238,13 @@
 ;------------------------
 ; Environment/State Functions
 ;------------------------
+
+; get active environment
+(define getactiveenvironment
+  (lambda (var environment)
+    (if (exists-in-list? var (variables (topframe environment)))
+        environment
+        (getactiveenvironment var (remainingframes)))))
 
 ; create a new empty environment
 (define newenvironment
