@@ -54,14 +54,8 @@
 ;Add a new function to a state
 (define interpret-function
   (lambda (statement environment next)
-<<<<<<< HEAD
-    '()))
-
-=======
     ((next insert (get-function-var statement) (get-function-value statement) environment))))
     
-    
->>>>>>> 2ebd78dfe5a7e0225779205f398f8948af7863f6
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
     (addBinding statement (newEnv statement environment continue) next)
@@ -74,9 +68,13 @@
 
 (define addBinding
   (lambda (statement environment next)
-    (interpret-declare (statement environment next))))
+    (interpret-declare getStatement environment next)))
     
-
+(define getParenList (car (eval-expression (cadr statement) environment continue)))
+(define getNextParen (car (getParenList)))
+(define getNewVal (cdddar statement))
+(define getStatement ('var getNextParen getNewVal))
+  
    ;  (eval-expression (cadr statement) environment continue) gets the list of the function [(paren) (body) (f2)]
     
 ;4. Addbinding(<formal paramter> [i], M_value(<arglist> [i], state, continuations), function environment)
