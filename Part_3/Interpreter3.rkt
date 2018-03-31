@@ -125,27 +125,29 @@
                                                                                                         (M_list then v1 return throw break next)
                                                                                                         (next v1))))))))
 
-(define M_state_try ;Try, catch, finally
-  (lambda (body catch finally s return throw break next)
-    (if (not (null? finally))
-        (M_list body (addStateFrame s)
-                (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value)
-                                                (M_state_decl2 (caadr catch) value s1 (lambda (s2)
-                                                  (M_list (caddr catch) s2 return throw break (lambda (s3)
-                                                    (M_list (cadr finally) s3 return throw break (lambda (s4)
-                                                      (next (removeStateFrame s4)))))))))))
-                (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
-                (lambda (s1) (M_list (cadr finally) s1 return throw break (lambda (s2) (next (removeStateFrame s2))))))
-        (M_list body (addStateFrame s)
-                (lambda (v1 s1) (M_list finally s1 return throw break (return v1 s1)))
-                (lambda (v1 s1) (M_value_op v1 s1 (lambda (value)
-                                                    (M_state_decl2 (caadr catch) value s1 (lambda (s2)
-                                                                                          (M_list (caddr catch) s2 return throw break (lambda (s3)
-                                                                                                                                      (M_list finally s3 return throw break (lambda (s4)
-                                                                                                                                                                                     (next (removeStateFrame s4)))))))))))
-                (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))
-                (lambda (s1) (M_list finally s1 return throw break (lambda (s2) (next (removeStateFrame s2)))))))))
+; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
+;  We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
+(define interpret-try
+  (lambda (statement environment return break continue throw next)
+    (let* ((finally-block (make-finally-block (get-finally statement)))
+           (try-block (make-try-block (get-try statement)))
+           (new-return (lambda (v) (interpret-block finally-block environment return break continue throw (lambda (env2) (return v)))))
+           (new-break (lambda (env) (interpret-block finally-block env return break continue throw (lambda (env2) (break env2)))))
+           (new-continue (lambda (env) (interpret-block finally-block env return break continue throw (lambda (env2) (continue env2)))))
+           (new-throw (create-throw-catch-continuation (get-catch statement) environment return break continue throw next finally-block)))
+      (interpret-block try-block environment new-return new-break new-continue new-throw (lambda (env) (interpret-block finally-block env return break continue throw next))))))
+
+; helper methods so that I can reuse the interpret-block method on the try and finally blocks
+(define make-try-block
+  (lambda (try-statement)
+    (cons 'begin try-statement)))
+
+(define make-finally-block
+  (lambda (finally-statement)
+    (cond
+      ((null? finally-statement) '(begin))
+      ((not (eq? (statement-type finally-statement) 'finally)) (myerror "Incorrectly formatted finally block"))
+      (else (cons 'begin (cadr finally-statement))))))
                             
 ;M_value
 (define M_value_op ;returns the value of an expression
