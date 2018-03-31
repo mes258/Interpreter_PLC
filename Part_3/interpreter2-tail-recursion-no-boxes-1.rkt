@@ -248,7 +248,7 @@
 (define statement-type operator)
 (define get-expr operand1)
 (define get-function-var operand1)
-(define get-function-value operand2)
+(define get-function-value cddr)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
 (define exists-declare-value? exists-operand2?)
