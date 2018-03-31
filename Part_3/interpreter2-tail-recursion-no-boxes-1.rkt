@@ -146,43 +146,44 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment continue)
+  (lambda (expr environment next)
     (cond
-      ((number? expr) (continue expr))
-      ((eq? expr 'true) (continue #t))
-      ((eq? expr 'false) (continue #f))
-      ((not (list? expr)) (continue (lookup expr environment)))
-      (else (eval-operator expr environment continue)))))
+      ((number? expr) (next expr))
+      ((eq? expr 'true) (next #t))
+      ((eq? expr 'false) (next #f))
+      ((not (list? expr)) (next (lookup expr environment)))
+      (else (eval-operator expr environment next)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
 ; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
 ; to add side effects to the interpreter
 (define eval-operator
-  (lambda (expr environment continue)
+  (lambda (expr environment next)
     (cond
-      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (continue (not val)))))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (continue (- val)))))
-      (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment continue))))
+      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
+      ((eq? (operand2 expr) '=) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
+      (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
       )))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
-  (lambda (expr op1value environment continue)
+  (lambda (expr op1value environment next)
     (cond
-      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (+ op1value op2value)))))
-      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (- op1value op2value)))))
-      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (* op1value op2value)))))
-      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (/ op1value op2value)))))
-      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (remainder op1value op2value))))) 
-      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (isequal op1value op2value)))))
-      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (not (isequal op1value op2value))))))
-      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (< op1value op2value)))))
-      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (> op1value op2value)))))
-      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (<= op1value op2value)))))
-      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (>= op1value op2value)))))
-      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (or op1value op2value)))))
-      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (and op1value op2value)))))
-      (else (continue (myerror "Unknown operator:" (operator expr))))
+      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (+ op1value op2value)))))
+      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (- op1value op2value)))))
+      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (* op1value op2value)))))
+      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (/ op1value op2value)))))
+      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (remainder op1value op2value))))) 
+      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (isequal op1value op2value)))))
+      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (not (isequal op1value op2value))))))
+      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (< op1value op2value)))))
+      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (> op1value op2value)))))
+      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (<= op1value op2value)))))
+      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (>= op1value op2value)))))
+      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (or op1value op2value)))))
+      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (and op1value op2value)))))
+      (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
