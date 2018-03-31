@@ -1,7 +1,7 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
-; #lang racket
-; (require "simpleParser.scm")
-(load "functionParser.scm")
+ ;#lang racket
+ (require "functionParser.scm")
+;(load "functionParser.scm")
 
 ; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
 
@@ -9,16 +9,16 @@
 ; The functions that start eval-...  all return a value.  These are the M_value and M_boolean functions.
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
-;(define interpret
- ; (lambda (file)
-  ;  (scheme->language
-   ; (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
-   ;                           (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-   ;                           (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
-
 (define interpret
-  (lambda (filename)
-    (interpret-statement-list (parser filename) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
+  (lambda (file)
+    (scheme->language
+     (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
+                              (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
+
+;(define interpret
+ ; (lambda (filename)
+  ;  (interpret-statement-list (parser (build-path (current-directory) filename)) (newenvironment) (lambda (v) v) (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
 
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -52,14 +52,14 @@
 (define interpret-declare
   (lambda (statement environment next)
     (if (exists-declare-value? statement)
-        (next (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment) environment))
+        (next (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment next) environment))
         (next (insert (get-declare-var statement) 'novalue environment)))))
 
-(define interpret-declare
-  (lambda (statement environment next)
-    (if (exists-declare-value? statement)
-        (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val))))
-        (next (insert (get-declare-var statement) 'novalue environment)))))
+;(define interpret-declare
+ ; (lambda (statement environment next)
+  ;  (if (exists-declare-value? statement)
+   ;     (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val))))
+    ;    (next (insert (get-declare-var statement) 'novalue environment)))))
 
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
@@ -82,6 +82,7 @@
                          (interpret-statement body environment return (lambda (env) (next env)) (lambda (env) (loop condition body env)) throw (lambda (env) (loop condition body env)))
                          (next environment)))))))
       (loop (get-condition statement) (get-body statement) environment))))
+
 
 ; Interprets a block.  The break, continue, throw and "next statement" continuations must be adjusted to pop the environment
 (define interpret-block
@@ -278,7 +279,7 @@
 ; Looks up a value in the environment.  If the value is a boolean, it converts our languages boolean type to a Scheme boolean type
 (define lookup
   (lambda (var environment)
-    (lookup-variable var environment)))
+    (unbox (lookup-variable var environment))))
   
 ; A helper function that does the lookup.  Returns an error if the variable does not have a legal value
 (define lookup-variable
@@ -323,7 +324,7 @@
   (lambda (var val environment)
     (if (exists-in-list? var (variables (car environment)))
         (myerror "error: variable is being re-declared:" var)
-        (cons (add-to-frame var val (car environment)) (cdr environment)))))
+        (cons (add-to-frame var (box val) (car environment)) (cdr environment)))))
 
 ; Changes the binding of a variable to a new value in the environment.  Gives an error if the variable does not exist.
 (define update
@@ -353,7 +354,7 @@
 (define update-in-frame-store
   (lambda (var val varlist vallist)
     (cond
-      ((eq? var (car varlist)) (cons (scheme->language val) (cdr vallist)))
+      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist)) (cdr vallist)))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (cdr vallist)))))))
 
 ; Returns the list of variables from a frame

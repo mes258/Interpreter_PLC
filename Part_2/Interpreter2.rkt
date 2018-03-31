@@ -1,7 +1,7 @@
 ;Interpreter 2 below:
 ;Vincent Portell, Michael Smith, Thomas Lerner
 ;EECS345 - March 9, 2018
-(require "simpleParser.scm")
+(require "functionParser.scm")
 
 ;To run:
 ;Call (interpret '"<filename>") where <filename> is any .txt file path.
