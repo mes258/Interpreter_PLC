@@ -51,7 +51,8 @@
     (eval-expression (get-expr statement) environment return)))
 
 ;Add a new function to a state
-
+(define interpret-function
+  (lambda (statement environment next)
     
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
@@ -161,7 +162,7 @@
     (cond
       ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
-      ((eq? '= (operator expr)) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
+      ((eq? (operand2 expr) '=) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
       (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
       )))
 
