@@ -1,7 +1,7 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
-; #lang racket
-; (require "simpleParser.scm")
-(load "functionParser.scm")
+ #lang racket
+ (require "functionParser.scm")
+;(load "simpleParser.scm")
 
 ; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
 
@@ -9,17 +9,13 @@
 ; The functions that start eval-...  all return a value.  These are the M_value and M_boolean functions.
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
-;(define interpret
- ; (lambda (file)
-  ;  (scheme->language
-   ; (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
-   ;                           (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-   ;                           (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
-
 (define interpret
-  (lambda (filename)
-    (interpret-statement-list (parser filename) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
-;testline
+  (lambda (file)
+    (scheme->language
+     (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
+                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+                               (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
+
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw next)
@@ -46,7 +42,7 @@
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return)
-    (eval-expression (get-expr statement) environment return)))
+    (return (eval-expression (get-expr statement) environment))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -55,16 +51,10 @@
         (next (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment) environment))
         (next (insert (get-declare-var statement) 'novalue environment)))))
 
-(define interpret-declare
-  (lambda (statement environment next)
-    (if (exists-declare-value? statement)
-        (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val))))
-        (next (insert (get-declare-var statement) 'novalue environment)))))
-
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment next)
-    (eval-expression (get-assign-rhs statement) environment) environment (lambda (val) (next update (get-assign-lhs statement) val))))
+    (next (update (get-assign-lhs statement) (eval-expression (get-assign-rhs statement) environment) environment))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
@@ -144,44 +134,42 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment continue)
+  (lambda (expr environment)
     (cond
-      ((number? expr) (continue expr))
-      ((eq? expr 'true) (continue #t))
-      ((eq? expr 'false) (continue #f))
-      ((not (list? expr)) (continue (lookup expr environment)))
-      (else (eval-operator expr environment continue)))))
+      ((number? expr) expr)
+      ((eq? expr 'true) #t)
+      ((eq? expr 'false) #f)
+      ((not (list? expr)) (lookup expr environment))
+      (else (eval-operator expr environment)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
 ; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
 ; to add side effects to the interpreter
 (define eval-operator
-  (lambda (expr environment continue)
+  (lambda (expr environment)
     (cond
-      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (continue (not val)))))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (continue (- val)))))
-      (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment continue))))
-      )))
+      ((eq? '! (operator expr)) (not (eval-expression (operand1 expr) environment)))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (- (eval-expression (operand1 expr) environment)))
+      (else (eval-binary-op2 expr (eval-expression (operand1 expr) environment) environment)))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
-  (lambda (expr op1value environment continue)
+  (lambda (expr op1value environment)
     (cond
-      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (+ op1value op2value)))))
-      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (- op1value op2value)))))
-      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (* op1value op2value)))))
-      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (/ op1value op2value)))))
-      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (remainder op1value op2value))))) 
-      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (isequal op1value op2value)))))
-      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (not (isequal op1value op2value))))))
-      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (< op1value op2value)))))
-      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (> op1value op2value)))))
-      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (<= op1value op2value)))))
-      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (>= op1value op2value)))))
-      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (or op1value op2value)))))
-      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (continue (and op1value op2value)))))
-      (else (continue (myerror "Unknown operator:" (operator expr))))
-      )))
+      ((eq? '+ (operator expr)) (+ op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '- (operator expr)) (- op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '* (operator expr)) (* op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '/ (operator expr)) (quotient op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '% (operator expr)) (remainder op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '== (operator expr)) (isequal op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '!= (operator expr)) (not (isequal op1value (eval-expression (operand2 expr) environment))))
+      ((eq? '< (operator expr)) (< op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '> (operator expr)) (> op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '<= (operator expr)) (<= op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '>= (operator expr)) (>= op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '|| (operator expr)) (or op1value (eval-expression (operand2 expr) environment)))
+      ((eq? '&& (operator expr)) (and op1value (eval-expression (operand2 expr) environment)))
+      (else (myerror "Unknown operator:" (operator expr))))))
 
 ; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
 (define isequal
