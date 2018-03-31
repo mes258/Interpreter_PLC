@@ -1,7 +1,7 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
 ; #lang racket
 ; (require "simpleParser.scm")
-(load "simpleParser.scm")
+(load "functionParser.scm")
 
 ; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
 
@@ -9,12 +9,16 @@
 ; The functions that start eval-...  all return a value.  These are the M_value and M_boolean functions.
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
+;(define interpret
+ ; (lambda (file)
+  ;  (scheme->language
+   ; (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
+   ;                           (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+   ;                           (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
+
 (define interpret
-  (lambda (file)
-    (scheme->language
-     (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
-                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                               (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
+  (lambda (filename)
+    (interpret-statement-list (parser filename) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
 
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
