@@ -354,7 +354,7 @@
 (define update-in-frame-store
   (lambda (var val varlist vallist)
     (cond
-      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist)) (cdr vallist)))
+      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist)) (cdr vallist))))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (cdr vallist)))))))
 
 ; Returns the list of variables from a frame
