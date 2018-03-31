@@ -69,18 +69,18 @@
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
   (lambda (statement environment return break continue throw next)
-    (cond
-      ((eval-expression (get-condition statement) environment) (interpret-statement (get-then statement) environment return break continue throw next))
-      ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw next))
-      (else (next environment)))))
+    (eval-expression (get-condition statement) environment (lambda (val) (cond
+                                                                           ((val) (interpret-statement (get-then statement) environment return break continue throw next))
+                                                                           ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw next))
+                                                                           (else (next environment)))))))
 
 ; Interprets a while loop.  We must create break and continue continuations for this loop
 (define interpret-while
   (lambda (statement environment return throw next)
     (letrec ((loop (lambda (condition body environment)
-                     (if (eval-expression condition environment)
+                     (eval-expression condition environment (lambda (val) (if (val)
                          (interpret-statement body environment return (lambda (env) (next env)) (lambda (env) (loop condition body env)) throw (lambda (env) (loop condition body env)))
-                         (next environment)))))
+                         (next environment)))))))
       (loop (get-condition statement) (get-body statement) environment))))
 
 ; Interprets a block.  The break, continue, throw and "next statement" continuations must be adjusted to pop the environment
