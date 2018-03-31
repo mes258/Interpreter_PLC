@@ -1,6 +1,7 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
  ;#lang racket
- (require "functionParser.scm")
+ ;(require "functionParser.scm")
+(require "simpleParser.scm")
 ;(load "functionParser.scm")
 
 ; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
@@ -52,25 +53,19 @@
 (define interpret-declare
   (lambda (statement environment next)
     (if (exists-declare-value? statement)
-        (next (insert (get-declare-var statement) (eval-expression (get-declare-value statement) environment next) environment))
+        (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val environment))))
         (next (insert (get-declare-var statement) 'novalue environment)))))
-
-;(define interpret-declare
- ; (lambda (statement environment next)
-  ;  (if (exists-declare-value? statement)
-   ;     (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val))))
-    ;    (next (insert (get-declare-var statement) 'novalue environment)))))
 
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
   (lambda (statement environment next)
-    (eval-expression (get-assign-rhs statement) environment) environment (lambda (val) (next update (get-assign-lhs statement) val))))
+    (eval-expression (get-assign-rhs statement) environment (lambda (val) (next (update (get-assign-lhs statement) val environment))))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
   (lambda (statement environment return break continue throw next)
     (eval-expression (get-condition statement) environment (lambda (val) (cond
-                                                                           ((val) (interpret-statement (get-then statement) environment return break continue throw next))
+                                                                           (val (interpret-statement (get-then statement) environment return break continue throw next))
                                                                            ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw next))
                                                                            (else (next environment)))))))
 
@@ -78,7 +73,7 @@
 (define interpret-while
   (lambda (statement environment return throw next)
     (letrec ((loop (lambda (condition body environment)
-                     (eval-expression condition environment (lambda (val) (if (val)
+                     (eval-expression condition environment (lambda (val) (if val
                          (interpret-statement body environment return (lambda (env) (next env)) (lambda (env) (loop condition body env)) throw (lambda (env) (loop condition body env)))
                          (next environment)))))))
       (loop (get-condition statement) (get-body statement) environment))))
@@ -354,7 +349,7 @@
 (define update-in-frame-store
   (lambda (var val varlist vallist)
     (cond
-      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist)) (cdr vallist))))
+      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist))) (cdr vallist)))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (cdr vallist)))))))
 
 ; Returns the list of variables from a frame
