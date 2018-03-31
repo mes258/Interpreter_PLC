@@ -15,7 +15,9 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) env)))))
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall ('funcall 'main) (push-frame (env)) (lambda (v) v)
+                                                                                                                      (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+                                                                                                                      (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 
 ;(define interpret
  ; (lambda (filename)
@@ -45,7 +47,6 @@
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment return break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
-
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return)
@@ -55,37 +56,24 @@
 (define interpret-function
   (lambda (statement environment next)
     ((next insert (get-function-var statement) (get-function-value statement) environment))))
-    
+
+;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (addBinding statement (newEnv statement environment continue) next)
+    (eval-expression (cadr statement) environment (lambda (l)
+                                                    (next (addBinding (car l) (cddr statement) (envSetUp (cadr statement) environment) (lambda (e)
+                                                                                                                                         (interpret-statement-list (cdr l) e (lambda (v) v)  break continue throw (lambda (v) (next environment))))))))))
 
-
-    ))
-(define newEnv ; Steps 1,2,3
-  (lambda (statment evironment continue)
-    (push-frame (cddar (eval-expression (cadr statement) environment continue)))))
+(define envSetUp
+  (lambda (name environment)
+    (push-frame (getactiveenvironment name environment))))
 
 (define addBinding
-  (lambda (statement environment next)
-    (interpret-declare getStatement environment next)))
-    
-(define getParenList (car (eval-expression (cadr statement) environment continue)))
-(define getNextParen (car (getParenList)))
-(define getNewVal (cdddar statement))
-(define getStatement ('var getNextParen getNewVal))
-  
-   ;  (eval-expression (cadr statement) environment continue) gets the list of the function [(paren) (body) (f2)]
-    
-;4. Addbinding(<formal paramter> [i], M_value(<arglist> [i], state, continuations), function environment)
-
-;5. M_value (M_state((<body>, function environment, {new return continuation, default break, default continue, same throw})))
-
-;^does not deal with side effects
-    ;(a) create a function environment using the closure function on the current environment,
-    ;(b) evaluate each actual parameter in the current environment and bind it to the formal parameter in the function environment,
-    ;(c) interpret the body of the function with the function environment.
-    
+  (lambda (paramList inputParamList environment next)
+    (cond
+      ((null? paramList) (next environment))
+      (else (interpret-declare ('= (car paramList) (car inputParamList)) environment (lambda (e) (next (addBinding (cdr paramList) (cdr inputParamList) e next))))))))
+      
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -193,6 +181,7 @@
   (lambda (expr environment next)
     (cond
       ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
+      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) v) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) (lambda (v env) (myerror "Uncaught exception thrown")) next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
       (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
