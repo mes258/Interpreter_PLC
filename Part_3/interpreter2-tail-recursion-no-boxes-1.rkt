@@ -42,12 +42,18 @@
       ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw next))
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
+      ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment return)
     (eval-expression (get-expr statement) environment return)))
+
+;Add a new function to a state
+(define interpret-function
+  (lambda (statement environment next)
+    
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
