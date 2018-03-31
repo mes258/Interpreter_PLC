@@ -53,7 +53,7 @@
 ;Add a new function to a state
 (define interpret-function
   (lambda (statement environment next)
-    ((next insert (get-function-var statement) (get-function-value statement) environment))))
+    
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -162,7 +162,7 @@
     (cond
       ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
-      ((eq? '= (operator expr)) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
+      ((eq? (operand2 expr) '=) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
       (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
       )))
 
@@ -215,8 +215,6 @@
 ; these helper functions define the parts of the various statement types
 (define statement-type operator)
 (define get-expr operand1)
-(define get-function-var operand1)
-(define get-function-value operand2)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
 (define exists-declare-value? exists-operand2?)
@@ -239,13 +237,6 @@
 ;------------------------
 ; Environment/State Functions
 ;------------------------
-
-; get active environment
-(define getactiveenvironment
-  (lambda (var environment)
-    (if (exists-in-list? var (variables (topframe environment)))
-        environment
-        (getactiveenvironment var (remainingframes)))))
 
 ; create a new empty environment
 (define newenvironment
