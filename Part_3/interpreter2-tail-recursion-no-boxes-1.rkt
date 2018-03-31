@@ -278,7 +278,7 @@
 ; Looks up a value in the environment.  If the value is a boolean, it converts our languages boolean type to a Scheme boolean type
 (define lookup
   (lambda (var environment)
-    (lookup-variable var environment)))
+    (unbox (lookup-variable var environment))))
   
 ; A helper function that does the lookup.  Returns an error if the variable does not have a legal value
 (define lookup-variable
@@ -323,7 +323,7 @@
   (lambda (var val environment)
     (if (exists-in-list? var (variables (car environment)))
         (myerror "error: variable is being re-declared:" var)
-        (cons (add-to-frame var val (car environment)) (cdr environment)))))
+        (cons (add-to-frame var (box val) (car environment)) (cdr environment)))))
 
 ; Changes the binding of a variable to a new value in the environment.  Gives an error if the variable does not exist.
 (define update
@@ -353,7 +353,7 @@
 (define update-in-frame-store
   (lambda (var val varlist vallist)
     (cond
-      ((eq? var (car varlist)) (cons (scheme->language val) (cdr vallist)))
+      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist)) (cdr vallist)))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (cdr vallist)))))))
 
 ; Returns the list of variables from a frame
