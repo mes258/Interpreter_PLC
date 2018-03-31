@@ -1,7 +1,7 @@
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
  ;#lang racket
- ;(require "functionParser.scm")
-(require "simpleParser.scm")
+ (require "functionParser.scm")
+;(require "simpleParser.scm")
 ;(load "functionParser.scm")
 
 ; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
@@ -15,7 +15,7 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall ('funcall 'main) (push-frame (env)) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main) (push-frame env) (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 
@@ -55,14 +55,14 @@
 ;Add a new function to a state
 (define interpret-function
   (lambda (statement environment next)
-    ((next insert (get-function-var statement) (get-function-value statement) environment))))
+    (next (insert (get-function-var statement) (get-function-value statement) environment))))
 
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
     (eval-expression (cadr statement) environment (lambda (l)
                                                     (next (addBinding (car l) (cddr statement) (envSetUp (cadr statement) environment) (lambda (e)
-                                                                                                                                         (interpret-statement-list (cdr l) e (lambda (v) v)  break continue throw (lambda (v) (next environment))))))))))
+                                                                                                                                         (interpret-statement-list (cadr l) e (lambda (v) v)  break continue throw (lambda (v) (next environment))))))))))
 
 (define envSetUp
   (lambda (name environment)
@@ -266,7 +266,7 @@
   (lambda (var environment)
     (if (exists-in-list? var (variables (topframe environment)))
         environment
-        (getactiveenvironment var (remainingframes)))))
+        (getactiveenvironment var (remainingframes environment)))))
 
 ; create a new empty environment
 (define newenvironment
