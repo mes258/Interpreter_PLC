@@ -43,6 +43,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
+      ((eq? 'funcall 
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ; Calls the return continuation with the given expression value
@@ -52,7 +53,33 @@
 
 ;Add a new function to a state
 (define interpret-function
+  (lambda (statement environment next)))
+
+(define interpret-funcall
+  (lambda (statement environment return break continue throw next)
+    (addBinding statement (newEnv statement environment continue) next)
+
+
+    ))
+(define newEnv ; Steps 1,2,3
+  (lambda (statment evironment continue)
+    (push-frame (cddar (eval-expression (cadr statement) environment continue)))))
+
+(define addBinding
   (lambda (statement environment next)
+    (interpret-declare (statement environment next))))
+    
+
+   ;  (eval-expression (cadr statement) environment continue) gets the list of the function [(paren) (body) (f2)]
+    
+;4. Addbinding(<formal paramter> [i], M_value(<arglist> [i], state, continuations), function environment)
+
+;5. M_value (M_state((<body>, function environment, {new return continuation, default break, default continue, same throw})))
+
+;^does not deal with side effects
+    ;(a) create a function environment using the closure function on the current environment,
+    ;(b) evaluate each actual parameter in the current environment and bind it to the formal parameter in the function environment,
+    ;(c) interpret the body of the function with the function environment.
     
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
