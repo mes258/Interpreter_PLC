@@ -15,7 +15,7 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main) (push-frame env) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main ()) (push-frame env) (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 
@@ -58,22 +58,27 @@
     (next (insert (get-function-var statement) (get-function-value statement) environment))))
 
 ;Call a function
+;Set up variables for funcall
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (eval-expression (cadr statement) environment (lambda (l)
-                                                    (next (addBinding (car l) (cddr statement) (envSetUp (cadr statement) environment) (lambda (e)
-                                                                                                                                         (interpret-statement-list (cadr l) e (lambda (v) v)  break continue throw (lambda (v) (next environment))))))))))
+    (eval-expression (cadr statement) environment (lambda (f)
+                                                    (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) (lambda (e)
+                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (statement e throw next)
+                                                                                                                                                                                                            (interpret-throw (cons 'throw (list statement)) e throw)) (lambda (e2)
+                                                                                                                                                                                                                                                                                   (next environment)))))))))
 
 (define envSetUp
   (lambda (name environment)
     (push-frame (getactiveenvironment name environment))))
 
 (define addBinding
-  (lambda (paramList inputParamList environment next)
+  (lambda (paramList inputParamList environment activeEnv next)
     (cond
-      ((null? paramList) (next environment))
-      (else (interpret-declare ('= (car paramList) (car inputParamList)) environment (lambda (e) (next (addBinding (cdr paramList) (cdr inputParamList) e next))))))))
-      
+      ((null? paramList) (next activeEnv))
+      ((null? inputParamList) (next activeEnv))
+      (else (eval-expression (car inputParamList) environment (lambda (p)
+                                                                (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv (lambda (e)
+                                                                                                                               (next (addBinding (cdr paramList) (cdr inputParamList) environment e next))))))))))      
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -119,7 +124,8 @@
 ; We use a continuation to throw the proper value.  Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw)
-    (throw (eval-expression (get-expr statement) environment) environment)))
+    (eval-expression (get-expr statement) environment (lambda (t) (throw t environment)))))
+    ;(throw (eval-expression (get-expr statement) environment next) environment)))
 
 ; Interpret a try-catch-finally block
 
@@ -181,7 +187,7 @@
   (lambda (expr environment next)
     (cond
       ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
-      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) v) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) (lambda (v env) (myerror "Uncaught exception thrown")) next))
+      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) (lambda (v env) (myerror "Uncaught exception thrown")) next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
       (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
