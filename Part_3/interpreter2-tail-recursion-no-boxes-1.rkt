@@ -36,7 +36,7 @@
     (cond
       ((eq? 'return (statement-type statement)) (interpret-return statement environment throw return))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw next))
-      ((eq? '= (statement-type statement)) (interpret-assign statement environment next))
+      ((eq? '= (statement-type statement)) (interpret-assign statement environment throw next))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw next))
       ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw next))
       ((eq? 'continue (statement-type statement)) (continue environment))
@@ -178,7 +178,7 @@
       ((eq? expr 'false) (next #f))
       ((eq? expr #t) expr)
       ((eq? expr #f) expr)
-      ((not (list? expr)) (next (lookup expr throw environment)))
+      ((not (list? expr)) (next (lookup expr environment)))
       (else (eval-operator expr environment throw next)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
@@ -188,7 +188,7 @@
   (lambda (expr environment throw next)
     (cond
       ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment throw (lambda (val) (next (not val)))))
-      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment throw (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
+      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
       (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next))))
