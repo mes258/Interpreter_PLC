@@ -64,7 +64,7 @@
     (eval-expression (cadr statement) environment (lambda (f)
                                                     (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) (lambda (e)
                                                                                                                                                (interpret-statement-list (cadr f) e return break continue (lambda (statement e throw next)
-                                                                                                                                                                                                            (interpret-throw (cons 'throw (list statement)) e throw)) (lambda (e2)
+                                                                                                                                                                                                            (interpret-throw (cons 'throw (list statement)) e (lambda (t e2) (throw t environment)))) (lambda (e2)
                                                                                                                                                                                                                                                                                    (next environment)))))))))
 
 (define envSetUp
