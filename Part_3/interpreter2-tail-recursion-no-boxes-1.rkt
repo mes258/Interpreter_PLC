@@ -177,6 +177,8 @@
       ((number? expr) (next expr))
       ((eq? expr 'true) (next #t))
       ((eq? expr 'false) (next #f))
+      ((eq? expr #t) expr)
+      ((eq? expr #f) expr)
       ((not (list? expr)) (next (lookup expr environment)))
       (else (eval-operator expr environment next)))))
 
@@ -431,6 +433,6 @@
     (letrec ((makestr (lambda (str vals)
                         (if (null? vals)
                             str
-                            (makestr (string-append str (string-append " " (symbol->string (car vals)))) (cdr vals))))))
+                            (makestr (string-append str (string-append " " (symbol->string (scheme->language (car vals))))) (cdr vals))))))
       (error-break (display (string-append str (makestr "" vals)))))))
 
