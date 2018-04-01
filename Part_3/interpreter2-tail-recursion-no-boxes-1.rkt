@@ -45,7 +45,7 @@
       ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
-      ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment return break continue throw next))
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment (lambda (v) (next environment)) break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 ; Calls the return continuation with the given expression value
 (define interpret-return
@@ -63,8 +63,7 @@
   (lambda (statement environment return break continue throw next)
     (eval-expression (cadr statement) environment (lambda (f)
                                                     (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) (lambda (e)
-                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (statement e throw next)
-                                                                                                                                                                                                            (interpret-throw (cons 'throw (list statement)) e (lambda (t e2) (throw t environment)))) (lambda (e2)
+                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
                                                                                                                                                                                                                                                                                    (next environment)))))))))
 
 (define envSetUp
