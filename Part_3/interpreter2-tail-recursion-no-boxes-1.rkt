@@ -35,7 +35,7 @@
   (lambda (statement environment return break continue throw next)
     (cond
       ((eq? 'return (statement-type statement)) (interpret-return statement environment return))
-      ((eq? 'var (statement-type statement)) (interpret-declare statement environment next))
+      ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw next))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment next))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw next))
       ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw next))
@@ -61,8 +61,8 @@
 ;Set up variables for funcall
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (eval-expression (cadr statement) environment (lambda (f)
-                                                    (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) (lambda (e)
+    (eval-expression (cadr statement) environment throw (lambda (f)
+                                                    (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
                                                                                                                                                (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
                                                                                                                                                                                                                                                                                    (next environment)))))))))
 
@@ -71,30 +71,30 @@
     (push-frame (getactiveenvironment name environment))))
 
 (define addBinding
-  (lambda (paramList inputParamList environment activeEnv next)
+  (lambda (paramList inputParamList environment activeEnv throw next)
     (cond
       ((null? paramList) (next activeEnv))
       ((null? inputParamList) (next activeEnv))
-      (else (eval-expression (car inputParamList) environment (lambda (p)
-                                                                (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv (lambda (e)
-                                                                                                                                         (addBinding (cdr paramList) (cdr inputParamList) environment e next)))))))))      
+      (else (eval-expression (car inputParamList) environment throw (lambda (p)
+                                                                (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv throw (lambda (e)
+                                                                                                                                         (addBinding (cdr paramList) (cdr inputParamList) environment e throw next)))))))))      
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
-  (lambda (statement environment next)
+  (lambda (statement environment throw next)
     (if (exists-declare-value? statement)
-        (eval-expression (get-declare-value statement) environment (lambda (val) (next (insert (get-declare-var statement) val environment))))
+        (eval-expression (get-declare-value statement) environment throw (lambda (val) (next (insert (get-declare-var statement) val environment))))
         (next (insert (get-declare-var statement) 'novalue environment)))))
 
 ; Updates the environment to add a new binding for a variable
 (define interpret-assign
-  (lambda (statement environment next)
-    (eval-expression (get-assign-rhs statement) environment (lambda (val) (next (update (get-assign-lhs statement) val environment))))))
+  (lambda (statement environment throw next)
+    (eval-expression (get-assign-rhs statement) environment throw (lambda (val) (next (update (get-assign-lhs statement) val environment))))))
 
 ; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
 (define interpret-if
   (lambda (statement environment return break continue throw next)
-    (eval-expression (get-condition statement) environment (lambda (val) (cond
+    (eval-expression (get-condition statement) environment throw (lambda (val) (cond
                                                                            (val (interpret-statement (get-then statement) environment return break continue throw next))
                                                                            ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw next))
                                                                            (else (next environment)))))))
@@ -103,7 +103,7 @@
 (define interpret-while
   (lambda (statement environment return throw next)
     (letrec ((loop (lambda (condition body environment)
-                     (eval-expression condition environment (lambda (val) (if val
+                     (eval-expression condition environment throw (lambda (val) (if val
                          (interpret-statement body environment return (lambda (env) (next env)) (lambda (env) (loop condition body env)) throw (lambda (env) (loop condition body env)))
                          (next environment)))))))
       (loop (get-condition statement) (get-body statement) environment))))
@@ -123,7 +123,7 @@
 ; We use a continuation to throw the proper value.  Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
 (define interpret-throw
   (lambda (statement environment throw)
-    (eval-expression (get-expr statement) environment (lambda (t) (throw t environment)))))
+    (eval-expression (get-expr statement) environment throw (lambda (t) (throw t environment)))))
     ;(throw (eval-expression (get-expr statement) environment next) environment)))
 
 ; Interpret a try-catch-finally block
@@ -171,46 +171,46 @@
 
 ; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
 (define eval-expression
-  (lambda (expr environment next)
+  (lambda (expr environment throw next)
     (cond
       ((number? expr) (next expr))
       ((eq? expr 'true) (next #t))
       ((eq? expr 'false) (next #f))
       ((eq? expr #t) expr)
       ((eq? expr #f) expr)
-      ((not (list? expr)) (next (lookup expr environment)))
-      (else (eval-operator expr environment next)))))
+      ((not (list? expr)) (next (lookup expr throw environment)))
+      (else (eval-operator expr environment throw next)))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
 ; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
 ; to add side effects to the interpreter
 (define eval-operator
-  (lambda (expr environment next)
+  (lambda (expr environment throw next)
     (cond
-      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment (lambda (val) (next (not val)))))
-      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) (lambda (v env) (myerror "Uncaught exception thrown")) next))
-      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment (lambda (val) (next (- val)))))
-      ((eq? '= (operator expr)) (interpret-assign expr environment (lambda (env) (next (lookup expr env)))))
-      (else (eval-expression (operand1 expr) environment (lambda (op1value) (eval-binary-op2 expr op1value environment next))))
+      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment throw (lambda (val) (next (not val)))))
+      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment throw (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
+      ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
+      (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next))))
       )))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
-  (lambda (expr op1value environment next)
+  (lambda (expr op1value environment throw next)
     (cond
-      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (+ op1value op2value)))))
-      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (- op1value op2value)))))
-      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (* op1value op2value)))))
-      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (/ op1value op2value)))))
-      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (remainder op1value op2value))))) 
-      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (isequal op1value op2value)))))
-      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (not (isequal op1value op2value))))))
-      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (< op1value op2value)))))
-      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (> op1value op2value)))))
-      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (<= op1value op2value)))))
-      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (>= op1value op2value)))))
-      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (or op1value op2value)))))
-      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment (lambda (op2value) (next (and op1value op2value)))))
+      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (+ op1value op2value)))))
+      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (- op1value op2value)))))
+      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (* op1value op2value)))))
+      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (/ op1value op2value)))))
+      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (remainder op1value op2value))))) 
+      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (isequal op1value op2value)))))
+      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (not (isequal op1value op2value))))))
+      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (< op1value op2value)))))
+      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (> op1value op2value)))))
+      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (<= op1value op2value)))))
+      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
+      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
+      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
       (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
