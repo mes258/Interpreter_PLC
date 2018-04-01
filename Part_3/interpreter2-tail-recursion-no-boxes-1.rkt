@@ -34,7 +34,7 @@
 (define interpret-statement
   (lambda (statement environment return break continue throw next)
     (cond
-      ((eq? 'return (statement-type statement)) (interpret-return statement environment return))
+      ((eq? 'return (statement-type statement)) (interpret-return statement environment throw return))
       ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw next))
       ((eq? '= (statement-type statement)) (interpret-assign statement environment next))
       ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw next))
@@ -49,8 +49,8 @@
       (else (myerror "Unknown statement:" (statement-type statement))))))
 ; Calls the return continuation with the given expression value
 (define interpret-return
-  (lambda (statement environment return)
-    (eval-expression (get-expr statement) environment return)))
+  (lambda (statement environment throw return)
+    (eval-expression (get-expr statement) environment throw return)))
 
 ;Add a new function to a state
 (define interpret-function
