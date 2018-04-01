@@ -78,7 +78,7 @@
       ((null? inputParamList) (next activeEnv))
       (else (eval-expression (car inputParamList) environment (lambda (p)
                                                                 (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv (lambda (e)
-                                                                                                                               (next (addBinding (cdr paramList) (cdr inputParamList) environment e next))))))))))      
+                                                                                                                                         (addBinding (cdr paramList) (cdr inputParamList) environment e next)))))))))      
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare

@@ -8,6 +8,6 @@ function fib(a) {
 }
 
 function main() {
-  return fib(1);
+  return fib(10);
 }
 
