@@ -15,7 +15,7 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main ()) (push-frame env) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main) (push-frame env) (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 
@@ -73,8 +73,8 @@
 (define addBinding
   (lambda (paramList inputParamList environment activeEnv throw next)
     (cond
-      ((null? paramList) (next activeEnv))
-      ((null? inputParamList) (next activeEnv))
+      ((and (null? paramList) (null? inputParamList))(next activeEnv))
+      ((or (and (null? inputParamList) (not (null? paramList))) (and (not (null? inputParamList)) (null? paramList))) (error inputParamList "mismatched parameters and arguments"))
       (else (eval-expression (car inputParamList) environment throw (lambda (p)
                                                                 (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv throw (lambda (e)
                                                                                                                                          (addBinding (cdr paramList) (cdr inputParamList) environment e throw next)))))))))      
