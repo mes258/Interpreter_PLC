@@ -1,129 +1,150 @@
-;Interpreter 3 below:
-;Vincent Portell, Michael Smith, Thomas Lerner
-;EECS345 - March 9, 2018
-(require "functionParser.scm")
+;Interpreter Part 3; April 2, 2018
+;Made by Vincent Portelli, Thomas Lerner, and Michael Smith
 
 ;To run:
 ;Call (interpret '"<filename>") where <filename> is any .txt file path.
 
-;go through the list of statements returned by interpreter
-(define M_list
-  (lambda (lis s return throw break next)
+; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
+ ;#lang racket
+ (require "functionParser.scm")
+;(require "simpleParser.scm")
+;(load "functionParser.scm")
+
+; An interpreter for the simple language using tail recursion for the M_state functions and does not handle side effects.
+
+; The functions that start interpret-...  all return the current environment.  These are the M_state functions.
+; The functions that start eval-...  all return a value.  These are the M_value and M_boolean functions.
+
+; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
+(define interpret
+  (lambda (file)
+    (scheme->language
+     (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
+                              (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main) (push-frame env) (lambda (v) v)
+                                                                                                                      (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
+                                                                                                                      (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
+
+; interprets a list of statements.  The state/environment from each statement is used for the next ones.
+(define interpret-statement-list
+  (lambda (statement-list environment return break continue throw next)
+    (if (null? statement-list)
+        (next environment)
+        (interpret-statement (car statement-list) environment return break continue throw (lambda (env) (interpret-statement-list (cdr statement-list) env return break continue throw next))))))
+
+; interpret a statement in the environment with continuations for return, break, continue, throw, and "next statement"
+(define interpret-statement
+  (lambda (statement environment return break continue throw next)
     (cond
-      ((null? lis) (next s))
-      ((and (not (list? (car lis))) (null? (cdr lis))) (next s))
-      ((eq? (type lis) 'var)
-       (if (null? (cddar lis))
-           (M_state_decl1 (fir lis) s (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
-           (M_value_op (sec lis) s (lambda (value) (M_state_decl2 (fir lis) value s (lambda (v1) (M_list (cdr lis) v1 return throw break next)))))))
-      ((eq? (type lis) '=)
-       (M_value_op (sec lis) s (lambda (v1) (M_state_assign (fir lis) v1 s (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
-      ((eq? (type lis) 'while)
-       (M_state_while (fir lis) (sec lis) s return throw (lambda (vx) (M_list (cdr lis) vx return throw break next)) (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
-      ((eq? (type lis) 'if)
-       (if (null? (cdddar lis))
-           (M_state_if (ifcond (car lis)) (list (ifdo (car lis))) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break (lambda (v2) (next v2)))))
-           (M_state_if_else (ifcond (car lis)) (ifdo (car lis)) (ifelsedo (car lis)) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next)))))
-      ((or (eq? (type lis) '==)
-           (eq? (type lis) '!=)
-           (eq? (type lis) '>=)
-           (eq? (type lis) '<=)
-           (eq? (type lis) '>)
-           (eq? (type lis) '<)
-           (eq? (type lis) '+)
-           (eq? (type lis) '-)
-           (eq? (type lis) '/)
-           (eq? (type lis) '%)
-           (eq? (type lis) '*)
-           (eq? (type lis) '||)
-           (eq? (type lis) '&&))
-           ;(eq? (type lis) '!))
-       (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (list (operand2 (car lis))) v1 return throw break (lambda (v2) (M_list (cdr lis) v2 return throw break (lambda (v3) (next v3))))))))
-      ((eq? (type lis) '!) (M_list (list (operand1 (car lis))) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
-      ((eq? (type lis) 'break) (break s))
-      ((eq? (type lis) 'throw) (throw (fir lis) s))
-      ((eq? (type lis) 'continue) (next s))
-      ((eq? (type lis) 'return) (return (fir lis) s (lambda (v) v)))
-      ((eq? (type lis) 'begin) (M_block (cdar lis) s return throw break (lambda (v1) (M_list (cdr lis) v1 return throw break next))))
-      ((eq? (type lis) 'try) (M_state_try (fir lis) (sec lis) (thr lis) s return throw break (lambda (v) (M_list (cdr lis) v return throw break next) )))
-      (else s))))
+      ((eq? 'return (statement-type statement)) (interpret-return statement environment throw return))
+      ((eq? 'var (statement-type statement)) (interpret-declare statement environment throw next))
+      ((eq? '= (statement-type statement)) (interpret-assign statement environment throw next))
+      ((eq? 'if (statement-type statement)) (interpret-if statement environment return break continue throw next))
+      ((eq? 'while (statement-type statement)) (interpret-while statement environment return throw next))
+      ((eq? 'continue (statement-type statement)) (continue environment))
+      ((eq? 'break (statement-type statement)) (break environment))
+      ((eq? 'begin (statement-type statement)) (interpret-block statement environment return break continue throw next))
+      ((eq? 'throw (statement-type statement)) (interpret-throw statement environment throw))
+      ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
+      ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
+      ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment (lambda (v) (next environment)) break continue throw next))
+      (else (myerror "Unknown statement:" (statement-type statement))))))
+; Calls the return continuation with the given expression value
+(define interpret-return
+  (lambda (statement environment throw return)
+    (eval-expression (get-expr statement) environment throw return)))
 
-;abstraction for M_list
-;note: we are ignoring the first part of the line, such as "while" or "if". In those cases, (fir lis) refers to <condtion>.
-(define type caar);type of call
-(define fir cadar);First parameter
-(define sec caddar);Second parameter
-(define thr
-  (lambda (l)
-  (car (cdddar l))));Third parameter
-(define ifcond cadr)
-(define ifdo caddr)
-(define ifelsedo cadddr)
+;Add a new function to a state
+(define interpret-function
+  (lambda (statement environment next)
+    (next (insert (get-function-var statement) (get-function-value statement) environment))))
 
-;M_list helper functions
-(define M_state  ;for if you want to get the state that results from a single statement
-  (lambda (e s return throw break next)
-    (M_list (list e) s return throw break next)))
+;Call a function
+(define interpret-funcall
+  (lambda (statement environment return break continue throw next)
+    (eval-expression (cadr statement) environment throw (lambda (f)
+                                                    (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
+                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
+                                                                                                                                                                                                                                                  (next environment)))))))))
 
-(define M_block ;evaluate a block of code
-  (lambda (lis s return throw break next)
-    (M_list lis (addStateFrame s) return throw break (lambda (v) (next (removeStateFrame v))))))
+(define envSetUp
+  (lambda (name environment)
+    (push-frame (getactiveenvironment name environment))))
 
-(define addStateFrame ;Add an empty state when entering a new block
-  (lambda (s)
-    (cons '() s)))
-
-(define removeStateFrame ;Remove the top state when leaving a block
-  (lambda (s)
-    (cdr s)))
-
-;M_state for different operations
-(define M_state_decl1 ;add variable to state with value null
-  (lambda (var s next)
+(define addBinding
+  (lambda (paramList inputParamList environment activeEnv throw next)
     (cond
-      ((null? s) (next (list (list (list var) (list noval)))))
-      ((null? (car s)) (next (cons (list (list var) (list noval)) (cdr s))))
-      ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons noval (cadar s)))) (cdr s))))
-      (else (error var "Already declared in this block")))))
+      ((and (null? paramList) (null? inputParamList))(next activeEnv))
+      ((or (and (null? inputParamList) (not (null? paramList))) (and (not (null? inputParamList)) (null? paramList))) (error inputParamList "mismatched parameters and arguments"))
+      (else (eval-expression (car inputParamList) environment throw (lambda (p)
+                                                                (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv throw (lambda (e)
+                                                                                                                                         (addBinding (cdr paramList) (cdr inputParamList) environment e throw next)))))))))      
 
-(define M_state_decl2 ;add variable to state with value val
-  (lambda (var val s next)
+; Adds a new variable binding to the environment.  There may be an assignment with the variable
+(define interpret-declare
+  (lambda (statement environment throw next)
+    (if (exists-declare-value? statement)
+        (eval-expression (get-declare-value statement) environment throw (lambda (val) (next (insert (get-declare-var statement) val environment))))
+        (next (insert (get-declare-var statement) 'novalue environment)))))
+
+; Updates the environment to add a new binding for a variable
+(define interpret-assign
+  (lambda (statement environment throw next)
+    (eval-expression (get-assign-rhs statement) environment throw (lambda (val) (next (update (get-assign-lhs statement) val environment))))))
+
+; We need to check if there is an else condition.  Otherwise, we evaluate the expression and do the right thing.
+(define interpret-if
+  (lambda (statement environment return break continue throw next)
+    (eval-expression (get-condition statement) environment throw (lambda (val) (cond
+                                                                           (val (interpret-statement (get-then statement) environment return break continue throw next))
+                                                                           ((exists-else? statement) (interpret-statement (get-else statement) environment return break continue throw next))
+                                                                           (else (next environment)))))))
+
+; Interprets a while loop.  We must create break and continue continuations for this loop
+(define interpret-while
+  (lambda (statement environment return throw next)
+    (letrec ((loop (lambda (condition body environment)
+                     (eval-expression condition environment throw (lambda (val) (if val
+                         (interpret-statement body environment return (lambda (env) (next env)) (lambda (env) (loop condition body env)) throw (lambda (env) (loop condition body env)))
+                         (next environment)))))))
+      (loop (get-condition statement) (get-body statement) environment))))
+
+
+; Interprets a block.  The break, continue, throw and "next statement" continuations must be adjusted to pop the environment
+(define interpret-block
+  (lambda (statement environment return break continue throw next)
+    (interpret-statement-list (cdr statement)
+                                         (push-frame environment)
+                                         return
+                                         (lambda (env) (break (pop-frame env)))
+                                         (lambda (env) (continue (pop-frame env)))
+                                         (lambda (v env) (throw v (pop-frame env)))
+                                         (lambda (env) (next (pop-frame env))))))
+
+; We use a continuation to throw the proper value.  Because we are not using boxes, the environment/state must be thrown as well so any environment changes will be kept
+(define interpret-throw
+  (lambda (statement environment throw)
+    (eval-expression (get-expr statement) environment throw (lambda (t) (throw t environment)))))
+    ;(throw (eval-expression (get-expr statement) environment next) environment)))
+
+; Interpret a try-catch-finally block
+
+; Create a continuation for the throw.  If there is no catch, it has to interpret the finally block, and once that completes throw the exception.
+;   Otherwise, it interprets the catch block with the exception bound to the thrown value and interprets the finally block when the catch is done
+(define create-throw-catch-continuation
+  (lambda (catch-statement environment return break continue throw next finally-block)
     (cond
-      ((null? s) (next (list (list (list var) (list val)))))
-      ((null? (car s)) (next (cons (list (list var) (list val)) (cdr s))))
-      ((null? (checklayer var (car s))) (next (cons (cons (cons var (caar s)) (list (cons val (cadar s)))) (cdr s))))
-      (else (error var "Already declared in this block")))))
-
-(define M_state_assign ;assign cps
-  (lambda (var expr s next)
-    (cond
-      ((null? s) (error var "Not declared yet"))
-      ((null? (car s)) (M_state_assign var expr (cdr s) (lambda (v) (next(cons (car s) v)))))
-      ((null? (caar s)) (M_state_assign var expr (cdr s) (lambda (v) (next (cons (car s) v)))))
-      ((equal? var (caaar s)) (M_value_op expr s (lambda (v) (next (cons (list (caar s) (cons v (cdadar s))) (cdr s))))))
-      (else (M_state_assign var expr (cons (list (cdaar s) (cdadar s)) (cdr s)) (lambda (v) (next (cons (list (cons (caaar s) (caar v)) (cons (caadar s) (cadar v))) (cdr v)))))))))
-
-(define return ;return the value 
-  (lambda (var state next)
-    (M_value_op var state next)))
-
-(define M_state_while ;while in cps form
-  (lambda (condition body s return throw break next)
-    (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition s (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) s return throw break (lambda (v3) (M_list (list body) v3 return throw break (lambda (v4) (M_state_while condition body v4 return throw break next)))))
-                                                                                                        (M_list (list condition) s return throw break next))))))))
-
-(define M_state_if_else ;check the condition and modify s based on the value of condition 
-  (lambda (condition then else s return throw break next)
-    (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list (list then) v3 return throw break next)))
-                                                                                                        (M_list (list condition) v1 return throw break (lambda (v3) (M_list (list else) v3 return throw break next))))))))))
-
-(define M_state_if ;if condition is true, modify based on then. Otherwise do nothing
-  (lambda (condition then s return throw break next)
-    (M_list (list condition) s return throw break (lambda (v1) (M_bool_op condition v1 (lambda (v2) (if v2
-                                                                                                        (M_list then v1 return throw break next)
-                                                                                                        (next v1))))))))
+      ((null? catch-statement) (lambda (ex env) (interpret-block finally-block env return break continue throw (lambda (env2) (throw ex env2))))) 
+      ((not (eq? 'catch (statement-type catch-statement))) (myerror "Incorrect catch statement"))
+      (else (lambda (ex env)
+                  (interpret-statement-list 
+                       (get-body catch-statement) 
+                       (insert (catch-var catch-statement) ex (push-frame env))
+                       return 
+                       (lambda (env2) (break (pop-frame env2))) 
+                       (lambda (env2) (continue (pop-frame env2))) 
+                       (lambda (v env2) (throw v (pop-frame env2))) 
+                       (lambda (env2) (interpret-block finally-block (pop-frame env2) return break continue throw next))))))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
 ;  We must create a new throw continuation and then interpret the try block with the new continuations followed by the finally block with the old continuations
@@ -148,89 +169,270 @@
       ((null? finally-statement) '(begin))
       ((not (eq? (statement-type finally-statement) 'finally)) (myerror "Incorrectly formatted finally block"))
       (else (cons 'begin (cadr finally-statement))))))
-                            
-;M_value
-(define M_value_op ;returns the value of an expression
-  (lambda (lis s next)
+
+; Evaluates all possible boolean and arithmetic expressions, including constants and variables.
+(define eval-expression
+  (lambda (expr environment throw next)
     (cond
-      ;((not (list? lis)) (M_value_op (list lis) s next))
-      ((null? lis) (next lis))
-      ((number? lis) (next lis))
-      ((eq? 'true lis) (next 'true))
-      ((eq? 'false lis) (next 'false))
-      ((eq? #t lis) (next 'true))
-      ((eq? #f lis) (next 'false))
-      ((not (null? (varvalue lis s))) (next (varvalue lis s)))
-      ((not (list? lis)) (error s "undefined variable"))
-      ((null? (car lis)) (next (varvalue lis s)))
-      ((eq? (operator lis) '+) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (+ v1 v2)))))))
-      ((eq? (operator lis) '-) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (- v1 v2)))))))
-      ((eq? (operator lis) '*) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (* v1 v2)))))))
-      ((eq? (operator lis) '/) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (quotient v1 v2)))))))
-      ((eq? (operator lis) '%) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (remainder v1 v2)))))))
-      ((eq? (operator lis) '=) (M_state (operand2 lis) s return throw break (lambda (v1) (M_state_assign (operand1 lis) (operand2 lis) v1 return throw break (lambda (v2) (M_value_op (operand2 lis) v2 next))))))
-      ((or (eq? (operator lis) '==)
-           (eq? (operator lis) '!=)
-           (eq? (operator lis) '!)
-           (eq? (operator lis) '||)
-           (eq? (operator lis) '&&)
-           (eq? (operator lis) '>)
-           (eq? (operator lis) '<)
-           (eq? (operator lis) '>=)
-           (eq? (operator lis) '<=)) (M_bool_op lis s (lambda (v) (if v (next 'true) (next 'false)))))
-      (else (error (operator lis) "Unknown operator")))))
+      ((number? expr) (next expr))
+      ((eq? expr 'true) (next #t))
+      ((eq? expr 'false) (next #f))
+      ((eq? expr #t) expr)
+      ((eq? expr #f) expr)
+      ((not (list? expr)) (next (lookup expr environment)))
+      (else (eval-operator expr environment throw next)))))
 
-;M_value helper functions
-(define varvalue ;gives the value of a variable given a state [if doesn't exist, gives null]
-  (lambda (name s)
+; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
+; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
+; to add side effects to the interpreter
+(define eval-operator
+  (lambda (expr environment throw next)
     (cond
-      ((null? s) s)
-      ((null? (car s)) (varvalue name (cdr s)))
-      ((null? (caar s)) (varvalue name (cdr s)))
-      ((equal? name (caaar s)) (caadar s))
-      (else (varvalue name (cons (list (cdaar s) (cdadar s)) (cdr s)))))))
+      ((eq? '! (operator expr)) (eval-expression (operand1 expr) environment throw (lambda (val) (next (not val)))))
+      ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
+      ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
+      ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
+      (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next))))
+      )))
 
-(define checklayer ;varvalue within a single frame
-  (lambda (name lis)
+; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
+(define eval-binary-op2
+  (lambda (expr op1value environment throw next)
     (cond
-      ((null? lis) lis)
-      ((not (null? (car lis)))
-       (if(eq? (caar lis) name )
-          (caadr lis)
-          (checklayer name (cons (cdar lis) (list(cdadr lis))))))
-      (else noval))))
+      ((eq? '+ (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (+ op1value op2value)))))
+      ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (- op1value op2value)))))
+      ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (* op1value op2value)))))
+      ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (/ op1value op2value)))))
+      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (remainder op1value op2value))))) 
+      ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (isequal op1value op2value)))))
+      ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (not (isequal op1value op2value))))))
+      ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (< op1value op2value)))))
+      ((eq? '> (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (> op1value op2value)))))
+      ((eq? '<= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (<= op1value op2value)))))
+      ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
+      ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
+      ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
+      (else (next (myerror "Unknown operator:" (operator expr))))
+      )))
 
-;If the state has no value, it is an empty list
-(define noval '())
+; Determines if two values are equal.  We need a special test because there are both boolean and integer types.
+(define isequal
+  (lambda (val1 val2)
+    (if (and (number? val1) (number? val2))
+        (= val1 val2)
+        (eq? val1 val2))))
 
-;M_boolean
-(define M_bool_op ;Returns true or false given an expression and state
-  (lambda (lis s next)
-    (cond
-      ((null? lis) (next lis))
-      ((eq? 'true lis) (next #t))
-      ((eq? 'false lis) (next #f))
-      ((not (list? lis)) (next lis))
-      ((eq? (operator lis) '==) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (eq? v1 v2)))))))
-      ((eq? (operator lis) '>=) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (or (> v1 v2) (eq? v1 v2))))))))
-      ((eq? (operator lis) '<=) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (or (< v1 v2) (eq? v1 v2))))))))
-      ((eq? (operator lis) '>) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (> v1 v2)))))))
-      ((eq? (operator lis) '<) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (< v1 v2)))))))
-      ((eq? (operator lis) '!=) (M_value_op (operand1 lis) s (lambda (v1) (M_value_op (operand2 lis) s (lambda (v2) (next (not (eq? v1 v2))))))))
-      ((eq? (operator lis) '||) (M_bool_op (operand1 lis) s (lambda (v1) (M_bool_op (operand2 lis) s (lambda (v2) (next (or v1 v2)))))))
-      ((eq? (operator lis) '&&) (M_bool_op (operand1 lis) s (lambda (v1) (M_bool_op (operand2 lis) s (lambda (v2) (next (and v1 v2)))))))
-      ((eq? (operator lis) '!) (M_bool_op (operand1 lis) s (lambda (v1) (next (not v1)))))
-      (else (M_value_op lis s next)))))
 
-;abstraction for M_value_op and M_bool_op
+;-----------------
+; HELPER FUNCTIONS
+;-----------------
+
+; These helper functions define the operator and operands of a value expression
 (define operator car)
 (define operand1 cadr)
 (define operand2 caddr)
+(define operand3 cadddr)
 
-;The initial state is a null list
-(define initState '())
+(define exists-operand2?
+  (lambda (statement)
+    (not (null? (cddr statement)))))
 
-;Code to Run - run this by calling: (interpret "code.txt") or with the path to some other file
-(define interpret
-  (lambda (filename)
-    (M_list (parser (build-path (current-directory) filename)) initState return (lambda (v s) (error "Something is wrong; throw was called" v)) (lambda (v) (error "Not a valid break")) (lambda (v) v))))
+(define exists-operand3?
+  (lambda (statement)
+    (not (null? (cdddr statement)))))
+
+; these helper functions define the parts of the various statement types
+(define statement-type operator)
+(define get-expr operand1)
+(define get-function-var operand1)
+(define get-function-value cddr)
+(define get-declare-var operand1)
+(define get-declare-value operand2)
+(define exists-declare-value? exists-operand2?)
+(define get-assign-lhs operand1)
+(define get-assign-rhs operand2)
+(define get-condition operand1)
+(define get-then operand2)
+(define get-else operand3)
+(define get-body operand2)
+(define exists-else? exists-operand3?)
+(define get-try operand1)
+(define get-catch operand2)
+(define get-finally operand3)
+
+(define catch-var
+  (lambda (catch-statement)
+    (car (operand1 catch-statement))))
+
+
+;------------------------
+; Environment/State Functions
+;------------------------
+
+; get active environment
+(define getactiveenvironment
+  (lambda (var environment)
+    (if (exists-in-list? var (variables (topframe environment)))
+        environment
+        (getactiveenvironment var (remainingframes environment)))))
+
+; create a new empty environment
+(define newenvironment
+  (lambda ()
+    (list (newframe))))
+
+; create an empty frame: a frame is two lists, the first are the variables and the second is the "store" of values
+(define newframe
+  (lambda ()
+    '(() ())))
+
+; add a frame onto the top of the environment
+(define push-frame
+  (lambda (environment)
+    (cons (newframe) environment)))
+
+; remove a frame from the environment
+(define pop-frame
+  (lambda (environment)
+    (cdr environment)))
+
+; some abstractions
+(define topframe car)
+(define remainingframes cdr)
+
+; does a variable exist in the environment?
+(define exists?
+  (lambda (var environment)
+    (cond
+      ((null? environment) #f)
+      ((exists-in-list? var (variables (topframe environment))) #t)
+      (else (exists? var (remainingframes environment))))))
+
+; does a variable exist in a list?
+(define exists-in-list?
+  (lambda (var l)
+    (cond
+      ((null? l) #f)
+      ((eq? var (car l)) #t)
+      (else (exists-in-list? var (cdr l))))))
+
+; Looks up a value in the environment.  If the value is a boolean, it converts our languages boolean type to a Scheme boolean type
+(define lookup
+  (lambda (var environment)
+    (unbox (lookup-variable var environment))))
+  
+; A helper function that does the lookup.  Returns an error if the variable does not have a legal value
+(define lookup-variable
+  (lambda (var environment)
+    (let ((value (lookup-in-env var environment)))
+      (if (eq? 'novalue value)
+          (myerror "error: variable without an assigned value:" var)
+          value))))
+
+; Return the value bound to a variable in the environment
+(define lookup-in-env
+  (lambda (var environment)
+    (cond
+      ((null? environment) (myerror "error: undefined variable" var))
+      ((exists-in-list? var (variables (topframe environment))) (lookup-in-frame var (topframe environment)))
+      (else (lookup-in-env var (cdr environment))))))
+
+; Return the value bound to a variable in the frame
+(define lookup-in-frame
+  (lambda (var frame)
+    (cond
+      ((not (exists-in-list? var (variables frame))) (myerror "error: undefined variable" var))
+      (else (language->scheme (get-value (indexof var (variables frame)) (store frame)))))))
+
+; Get the location of a name in a list of names
+(define indexof
+  (lambda (var l)
+    (cond
+      ((null? l) 0)  ; should not happen
+      ((eq? var (car l)) 0)
+      (else (+ 1 (indexof var (cdr l)))))))
+
+; Get the value stored at a given index in the list
+(define get-value
+  (lambda (n l)
+    (cond
+      ((zero? n) (car l))
+      (else (get-value (- n 1) (cdr l))))))
+
+; Adds a new variable/value binding pair into the environment.  Gives an error if the variable already exists in this frame.
+(define insert
+  (lambda (var val environment)
+    (if (exists-in-list? var (variables (car environment)))
+        (myerror "error: variable is being re-declared:" var)
+        (cons (add-to-frame var (box val) (car environment)) (cdr environment)))))
+
+; Changes the binding of a variable to a new value in the environment.  Gives an error if the variable does not exist.
+(define update
+  (lambda (var val environment)
+    (if (exists? var environment)
+        (update-existing var val environment)
+        (myerror "error: variable used but not defined:" var))))
+
+; Add a new variable/value pair to the frame.
+(define add-to-frame
+  (lambda (var val frame)
+    (list (cons var (variables frame)) (cons (scheme->language val) (store frame)))))
+
+; Changes the binding of a variable in the environment to a new value
+(define update-existing
+  (lambda (var val environment)
+    (if (exists-in-list? var (variables (car environment)))
+        (cons (update-in-frame var val (topframe environment)) (remainingframes environment))
+        (cons (topframe environment) (update-existing var val (remainingframes environment))))))
+
+; Changes the binding of a variable in the frame to a new value.
+(define update-in-frame
+  (lambda (var val frame)
+    (list (variables frame) (update-in-frame-store var val (variables frame) (store frame)))))
+
+; Changes a variable binding by placing the new value in the appropriate place in the store
+(define update-in-frame-store
+  (lambda (var val varlist vallist)
+    (cond
+      ((eq? var (car varlist)) (cons (scheme->language (begin (set-box! (car vallist) val) (car vallist))) (cdr vallist)))
+      (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (cdr vallist)))))))
+
+; Returns the list of variables from a frame
+(define variables
+  (lambda (frame)
+    (car frame)))
+
+; Returns the store from a frame
+(define store
+  (lambda (frame)
+    (cadr frame)))
+
+
+; Functions to convert the Scheme #t and #f to our languages true and false, and back.
+
+(define language->scheme
+  (lambda (v) 
+    (cond 
+      ((eq? v 'false) #f)
+      ((eq? v 'true) #t)
+      (else v))))
+
+(define scheme->language
+  (lambda (v)
+    (cond
+      ((eq? v #f) 'false)
+      ((eq? v #t) 'true)
+      (else v))))
+
+; Because the error function is not defined in R5RS scheme, I create my own:
+(define error-break (lambda (v) v))
+(call-with-current-continuation (lambda (k) (set! error-break k)))
+
+(define myerror
+  (lambda (str . vals)
+    (letrec ((makestr (lambda (str vals)
+                        (if (null? vals)
+                            str
+                            (makestr (string-append str (string-append " " (symbol->string (scheme->language (car vals))))) (cdr vals))))))
+      (error-break (display (string-append str (makestr "" vals)))))))
+
