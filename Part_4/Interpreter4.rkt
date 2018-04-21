@@ -17,7 +17,7 @@
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
 (define interpret
-  (lambda (file classname)
+  (lambda (file)
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
@@ -48,7 +48,96 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment (lambda (v) (next environment)) break continue throw next))
+      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statment) environment return break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
+
+
+
+(define new_instance_frame
+  (lambda ()
+    '( ()) ))
+
+
+(define push_instance_frame
+  (lambda (environment next)
+    (next (cons (new_instance_frame) environment))))
+
+;instance
+(define interpret-instance
+  (lambda (expr environment next)
+    (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next))))))
+
+(define add_classname
+  (lambda (name env next)
+    (next (cons name env))))
+
+(define interpret-construct-instance
+  (lambda (name environment next)
+    (add_classname (name environment (lambda (e) (myAppend (get_dynamic_vars (lookup name e)) (get_instance_closure_vars_with_super (lookup name e) e)))))))
+
+(define get_instance_closure_vars_with_super
+  (lambda (closure e)
+    (if (has_super closure)
+        (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e)))))))
+
+(define has_super
+  (lambda (closure)
+    (if (null? (caddddr closure))
+        #f
+        #t)))
+
+(define get_super
+  (lambda (closure env)
+    (lookup (caddddr closure) env)))
+ 
+
+;backwards
+(define myAppend
+  (lambda (lis1 lis2)
+    (if (null? lis1)
+       lis2
+       (cons (car lis2) (myAppend (cdr lis2) lis1)))))
+
+(define get_dynamic_vars
+  (lambda (class_closure)
+    (caadr class_closure)
+
+;class
+(define interpret-class-closure
+  (lambda (statement environment return break continue throw next)
+    (cond
+      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statment) environment return break continue throw next))
+      ((eq? 'var (statement-type statement)) (interpret-declare statement (cadr environment) throw next))
+      ((eq? 'static-var (statement-type statement)) (interpret-declare statement (caddr environment) throw next))
+      ((eq? 'function (statement-type statement)) (interpret-function statement (car environment) next))
+      ((eq? 'static-function (statement-type statement)) (interpret-function statement (cadddr environment) next))
+      ((eq? 'abstract-function (statement-type statement)) (interpret-function statement (car environment) next))))))
+                                               
+
+;make new class env
+(define new_class_env
+  (lambda ()
+    (list (new_class_frame))))
+
+(define new_class_frame
+  (lambda ()
+    '(  (()()) (()()) (()()) (()()) )  ))
+
+(define add_superclass
+  (lambda (superclass env next)
+    (next (cons (cons (car superclass) (caddddr new_class_env)) (env)))))
+
+;Add a new class to a state
+(define interpret-class
+  (lambda (superclass body environment return break continue throw next)
+    (add_superclass superclass environment (lambda (e) (interpret-class-closure (car body) e return break continue throw next)))))
+
+
+;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)
+;              car                     cadr                                               caddr                                    cadddr                        caddddr
+
+
+
 ; Calls the return continuation with the given expression value
 (define interpret-return
   (lambda (statement environment throw return)
@@ -192,8 +281,8 @@
       ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
-      (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next))))
-      )))
+      ((eq? 'new (operator expr)) (interpret-instance expr environment next))
+      (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next)))))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
 (define eval-binary-op2
