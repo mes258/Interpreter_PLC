@@ -5,7 +5,7 @@
 ;Call (interpret '"<filename>" ) where <filename> is any .txt file path.
 
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
- ;#lang racket
+ #lang racket
  (require "classParser.scm")
 ;(require "simpleParser.scm")
 ;(load "functionParser.scm")
@@ -48,7 +48,7 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment (lambda (v) (next environment)) break continue throw next))
-      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statment) environment return break continue throw next))
+      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statement) environment return break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 
@@ -65,7 +65,7 @@
 ;instance
 (define interpret-instance
   (lambda (expr environment next)
-    (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next))))))
+    (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next)))))
 
 (define add_classname
   (lambda (name env next)
@@ -78,17 +78,18 @@
 (define get_instance_closure_vars_with_super
   (lambda (closure e)
     (if (has_super closure)
-        (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e)))))))
+        (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e))))
+        (e))))
 
 (define has_super
   (lambda (closure)
-    (if (null? (caddddr closure))
+    (if (null? (cadr (cdddr closure)))
         #f
         #t)))
 
 (define get_super
   (lambda (closure env)
-    (lookup (caddddr closure) env)))
+    (lookup (cadr (cdddr closure) env))))
  
 
 ;backwards
@@ -100,18 +101,18 @@
 
 (define get_dynamic_vars
   (lambda (class_closure)
-    (caadr class_closure)
+    (caadr class_closure)))
 
 ;class
 (define interpret-class-closure
   (lambda (statement environment return break continue throw next)
     (cond
-      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statment) environment return break continue throw next))
+      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statement) environment return break continue throw next))
       ((eq? 'var (statement-type statement)) (interpret-declare statement (cadr environment) throw next))
       ((eq? 'static-var (statement-type statement)) (interpret-declare statement (caddr environment) throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement (car environment) next))
       ((eq? 'static-function (statement-type statement)) (interpret-function statement (cadddr environment) next))
-      ((eq? 'abstract-function (statement-type statement)) (interpret-function statement (car environment) next))))))
+      ((eq? 'abstract-function (statement-type statement)) (interpret-function statement (car environment) next)))))
                                                
 
 ;make new class env
@@ -125,7 +126,7 @@
 
 (define add_superclass
   (lambda (superclass env next)
-    (next (cons (cons (car superclass) (caddddr new_class_env)) (env)))))
+    (next (cons (cons (car superclass) (cadr (cdddr new_class_env))) (env)))))
 
 ;Add a new class to a state
 (define interpret-class
