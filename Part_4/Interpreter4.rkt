@@ -17,13 +17,26 @@
 
 ; The main function.  Calls parser to get the parse tree and interprets it with a new environment.  Sets default continuations for return, break, continue, throw, and "next statement"
 (define interpret
-  (lambda (file)
+  (lambda (file className)
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-funcall '(funcall main) (push-frame env) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-class-main className (push-frame env) (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
+;take in a classname and run the main function within it
+(define interpret-class-main
+  (lambda (classname env return break continue throw next)
+    (interpret-funcall (get-class-function (lookup classname env) 'main) env return break continue throw next)))
+
+
+(define get-static-funct caddr)
+
+(define get-class-function
+  (lambda (classclosure functionName)
+     (lookup functionName (get-static-funct classclosure))))  
+
+    
 
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -48,15 +61,14 @@
       ((eq? 'try (statement-type statement)) (interpret-try statement environment return break continue throw next))
       ((eq? 'function (statement-type statement)) (interpret-function statement environment next))
       ((eq? 'funcall (statement-type statement)) (interpret-funcall statement environment (lambda (v) (next environment)) break continue throw next))
-      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statement) environment return break continue throw next))
+      ((eq? 'class (statement-type statement)) (interpret-class (cadr statement) (caddr statement) (cdddr statement) environment return break continue throw next))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
-
+;'((class A () ((static-function main () ((return 5))))))
 
 (define new_instance_frame
   (lambda ()
     '( ()) ))
-
 
 (define push_instance_frame
   (lambda (environment next)
@@ -107,14 +119,14 @@
 (define interpret-class-closure
   (lambda (statement environment return break continue throw next)
     (cond
-      ((eq? 'class (statement-type statement)) (interpret-class (caddr statement) (cdddr statement) environment return break continue throw next))
-      ((eq? 'var (statement-type statement)) (interpret-declare statement (cadr environment) throw next))
-      ((eq? 'static-var (statement-type statement)) (interpret-declare statement (caddr environment) throw next))
-      ((eq? 'function (statement-type statement)) (interpret-function statement (car environment) next))
-      ((eq? 'static-function (statement-type statement)) (interpret-function statement (cadddr environment) next))
-      ((eq? 'abstract-function (statement-type statement)) (interpret-function statement (car environment) next)))))
-                                               
+      ((eq? 'var (car (statement-type statement))) (interpret-declare (cadr environment) throw next))
+      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (caddr environment) throw next))
+      ((eq? 'function (car (statement-type statement))) (interpret-function statement (car environment) next))
+      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (cadddr environment) (lambda (e) (next (append environment e)))))
+      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (car environment) next))
+      (else (myerror "Unknown statement:" (statement-type statement))))))
 
+'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
 ;make new class env
 (define new_class_env
   (lambda ()
@@ -122,16 +134,18 @@
 
 (define new_class_frame
   (lambda ()
-    '(  (()()) (()()) (()()) (()()) )  ))
+    '(  ((()())) ((()())) ((()())) ((()())) )  ))
 
 (define add_superclass
-  (lambda (superclass env next)
-    (next (cons (cons (car superclass) (cadr (cdddr new_class_env))) (env)))))
+  (lambda (superclass)
+    (append superclass (cddddr new_class_frame))))
 
 ;Add a new class to a state
 (define interpret-class
-  (lambda (superclass body environment return break continue throw next)
-    (add_superclass superclass environment (lambda (e) (interpret-class-closure (car body) e return break continue throw next)))))
+  (lambda (classname superclass body environment return break continue throw next)
+    (if (null? superclass)
+        (insert classname (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) ) return break continue throw next) environment)
+        (insert classname (interpret-class-closure body (add_superclass superclass) return break continue throw next) environment))))
 
 
 ;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)
@@ -335,7 +349,7 @@
 (define statement-type operator)
 (define get-expr operand1)
 (define get-function-var operand1)
-(define get-function-value cddr)
+(define get-function-value cdddr)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
 (define exists-declare-value? exists-operand2?)
@@ -423,7 +437,7 @@
 (define lookup-in-env
   (lambda (var environment)
     (cond
-      ((null? environment) (myerror "error: undefined variable" var))
+      ((null? environment) (myerror "error: undefined variaable" var))
       ((exists-in-list? var (variables (topframe environment))) (lookup-in-frame var (topframe environment)))
       (else (lookup-in-env var (cdr environment))))))
 
