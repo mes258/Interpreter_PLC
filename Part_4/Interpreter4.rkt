@@ -29,11 +29,6 @@
   (lambda (classname env return break continue throw next)
     (interpret-funcall '(funcall main) (lookup classname env) return break continue throw next)))
 
-
-(define get-class-function
-  (lambda (classclosure functionName)
-     (lookup functionName (list (get-static-methods classclosure)))))  
-
     
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
@@ -72,35 +67,56 @@
     (next (cons (new_instance_frame) environment))))
 
 ;instance
-(define interpret-instance
-  (lambda (expr environment next)
-    (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next)))))
+(define get-instance-closure
+  (lambda (classname env)
+    (append classname (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))))))
 
-(define add_classname
-  (lambda (name env next)
-    (next (cons name env))))
+(define get-var-vals
+  (lambda (s)
+    (cadr s)))
+    
 
-(define interpret-construct-instance
-  (lambda (name environment next)
-    (add_classname (name environment (lambda (e) (myAppend (get_dynamic_vars (lookup name e)) (get_instance_closure_vars_with_super (lookup name e) e)))))))
+(define reboxlist
+ (lambda (l)
+   (cond
+     ((null? l) l)
+     (else (cons (unbox-rebox (car l)) (reboxlist (cdr l)))))))
 
-(define get_instance_closure_vars_with_super
-  (lambda (closure e)
-    (if (has_super closure)
-        (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e))))
-        (e))))
+(define unbox-rebox
+  (lambda (var)
+    (box (unbox var))))
+    
 
-(define has_super
-  (lambda (closure)
-    (if (null? (cadr (cdddr closure)))
-        #f
-        #t)))
 
-(define get_super
-  (lambda (closure env)
-    (lookup (cadr (cdddr closure) env))))
- 
+;(define interpret-instance
+ ; (lambda (expr environment next)
+  ;  (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next)))))
 
+;(define add_classname
+ ; (lambda (name env next)
+  ;  (next (cons name env))))
+
+;(define interpret-construct-instance
+ ; (lambda (name environment next)
+  ;  (add_classname (name environment (lambda (e) (myAppend (get_dynamic_vars (lookup name e)) (get_instance_closure_vars_with_super (lookup name e) e)))))))
+;
+;(define get_instance_closure_vars_with_super
+ ; (lambda (closure e)
+  ;  (if (has_super closure)
+   ;     (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e))))
+    ;    (e))))
+
+;(define has_super
+ ; (lambda (closure)
+  ;  (if (null? (cadr (cdddr closure)))
+   ;     #f
+    ;    #t)))
+
+;(define get_super
+;  (lambda (closure env)
+ ;   (lookup (cadr (cdddr closure) env))))
+ ;
+;
 ;backwards
 (define myAppend
   (lambda (lis1 lis2)
@@ -108,9 +124,9 @@
        lis2
        (cons (car lis2) (myAppend (cdr lis2) lis1)))))
 
-(define get_dynamic_vars
-  (lambda (class_closure)
-    (caadr class_closure)))
+;(define get_dynamic_vars
+ ; (lambda (class_closure)
+  ;  (caadr class_closure)))
 
 ;class
 (define interpret-class-closure
@@ -167,7 +183,7 @@
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
     (if (null? superclass)
-        (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) (1)) return break continue throw (lambda (cc) (next (insert classname cc environment))))
+        (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) (())) return break continue throw (lambda (cc) (next (insert classname cc environment))))
         (interpret-class-closure body (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 
@@ -319,7 +335,6 @@
       ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
-      ((eq? 'new (operator expr)) (interpret-instance expr environment next))
       (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next)))))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
@@ -339,6 +354,7 @@
       ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
       ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
       ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
+      ((eq? (car expr) 'new) (get-instance-closure ((cadr expr) environment)))
       (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
