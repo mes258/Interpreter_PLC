@@ -21,7 +21,7 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-class-main (string->symbol className) (push-frame env) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-class-main className (push-frame env) (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 ;take in a classname and run the main function within it
@@ -344,15 +344,6 @@
 (define exists-operand3?
   (lambda (statement)
     (not (null? (cdddr statement)))))
-
-; for getting stuff out of classes
-(define get-dynamic-methods car)
-(define get-static-methods cadr)
-(define get-dynamic-variables caddr)
-(define get-static-variables cadddr)
-(define get-super-name
-  (lambda (class)
-    (car (cddddr class))))
 
 ; these helper functions define the parts of the various statement types
 (define statement-type operator)
