@@ -21,13 +21,14 @@
     (scheme->language
      (interpret-statement-list (parser file) (newenvironment) (lambda (v) v)
                               (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
-                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-class-main (string->symbol className) (push-frame env) (lambda (v) v)
+                              (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (env) (interpret-class-main (string->symbol className) env (lambda (v) v)
                                                                                                                       (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop"))
                                                                                                                       (lambda (v env) (myerror "Uncaught exception thrown")) (lambda (v) v)))))))
 ;take in a classname and run the main function within it
 (define interpret-class-main
   (lambda (classname env return break continue throw next)
-    (interpret-funcall '(funcall main) (lookup classname env) return break continue throw next)))
+    (display (prep-env-for-class env classname)) (newline)
+    (interpret-funcall '(funcall main) (prep-env-for-class env classname) return break continue throw next)))
 
     
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
@@ -67,9 +68,9 @@
     (next (cons (new_instance_frame) environment))))
 
 ;instance
-(define get-instance-closure
+(define create-instance-closure
   (lambda (classname env)
-    (append classname (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))))))
+    (cons classname (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))))))
 
 (define get-var-vals
   (lambda (s)
@@ -132,25 +133,25 @@
 (define interpret-class-closure
   (lambda (statement environment return break continue throw next)
     (cond
-      ((eq? 'var (car (statement-type statement))) (interpret-declare (get-dynamic-variables environment) throw (lambda (e) (next (add-new-dynamic-variables environment e)))))
-      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (get-static-variables environment) throw (lambda (e) (next (add-new-static-variables environment e)))))
-      ((eq? 'function (car (statement-type statement))) (interpret-function statement (get-dynamic-methods environment) (lambda (e) (next (add-new-dynamic-methods environment e)))))
-      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (get-static-methods environment) (lambda (e) (next (add-new-static-methods environment e)))))
-      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (get-dynamic-methods environment) (lambda (e) (next (add-new-dynamic-methods environment e)))))
+      ((eq? 'var (car (statement-type statement))) (interpret-declare (list (get-dynamic-variables environment)) throw (lambda (e) (next (add-new-dynamic-variables environment (car e))))))
+      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (list (get-static-variables environment)) throw (lambda (e) (next (add-new-static-variables environment (car e))))))
+      ((eq? 'function (car (statement-type statement))) (interpret-function statement (list (get-dynamic-methods environment)) (lambda (e) (next (add-new-dynamic-methods environment (car e))))))
+      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (list (get-static-methods environment)) (lambda (e) (next (add-new-static-methods environment (car e))))))
+      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (list (get-dynamic-methods environment)) (lambda (e) (next (add-new-dynamic-methods environment (car e))))))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
 ;'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
 (define add-new-static-variables
   (lambda (cc vars)
-    (append (append (append (append (get-dynamic-methods cc) (get-static-methods cc)) (get-dynamic-variables cc)) vars) (get-super-name cc))))
+    (append (list (get-dynamic-methods cc) (get-static-methods cc) (get-dynamic-variables cc) vars) (list (get-super-name cc)))))
 
 (define add-new-dynamic-variables
   (lambda (cc vars)
-    (append (append (append (get-dynamic-methods cc) (get-static-methods cc)) vars) (cdddr cc))))
+    (append (list (get-dynamic-methods cc) (get-static-methods cc) vars) (cdddr cc))))
 
 (define add-new-static-methods
   (lambda (cc methods)
-    (append (append (get-dynamic-methods cc) methods) (cddr cc))))
+    (append (list (get-dynamic-methods cc) methods) (cddr cc))))
 
 (define add-new-dynamic-methods
   (lambda (cc methods)
@@ -164,7 +165,34 @@
 (define get-super-name
   (lambda (class)
     (car (cddddr class))))
-                                                                                                                           
+
+(define getclass car)
+
+(define prep-env-for-instance
+  (lambda (env instance)
+    (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass (lookup instance env)) env)) (get-static-methods (lookup (getclass (lookup instance env)) env)))
+                  (prep-instance-vars instance env)
+                  (get-static-variables (lookup (getclass (lookup instance env)) env)) )
+            (list (get-only-classes env)))))
+
+(define prep-env-for-class
+  (lambda (env classname)
+    (display(lookup classname env))(newline)
+    (append (list (get-static-methods (lookup classname env)) (get-static-variables (lookup classname env))) (get-only-classes env))))
+
+(define get-only-classes
+  (lambda (env)
+    (cond
+      ((null? (cdr env)) env)
+      (else (get-only-classes (cdr env))))))
+
+(define prep-instance-vars
+  (lambda (instance env)
+    (list (get-dynamic-variables (lookup (getclass (lookup instance env)) env)) (cadr (lookup instance env)))))
+
+(define merge-state-frames ; WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED
+  (lambda (frame-a frame-b)
+    (list (append (car frame-a) (car frame-b)) (append (cadr frame-a) (cadr frame-b)))))
 
 ;make new class env
 (define new_class_env
@@ -183,7 +211,7 @@
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
     (if (null? superclass)
-        (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) (())) return break continue throw (lambda (cc) (next (insert classname cc environment))))
+        (interpret-class-closure (car body) '(  (()()) (()()) (()()) (()()) ()) return break continue throw (lambda (cc) (next (insert classname cc environment))))
         (interpret-class-closure body (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 
@@ -354,7 +382,7 @@
       ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
       ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
       ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
-      ((eq? (car expr) 'new) (get-instance-closure ((cadr expr) environment)))
+      ((eq? (car expr) 'new) (create-instance-closure (cadr expr) environment))
       (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
