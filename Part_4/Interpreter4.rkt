@@ -27,17 +27,14 @@
 ;take in a classname and run the main function within it
 (define interpret-class-main
   (lambda (classname env return break continue throw next)
-    (interpret-funcall (get-class-function (lookup classname env) 'main) env return break continue throw next)))
+    (interpret-funcall '(funcall main) (lookup classname env) return break continue throw next)))
 
-
-(define get-static-funct caddr)
 
 (define get-class-function
   (lambda (classclosure functionName)
-     (lookup functionName (get-static-funct classclosure))))  
+     (lookup functionName (list (get-static-methods classclosure)))))  
 
     
-
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw next)
@@ -119,14 +116,40 @@
 (define interpret-class-closure
   (lambda (statement environment return break continue throw next)
     (cond
-      ((eq? 'var (car (statement-type statement))) (interpret-declare (cadr environment) throw next))
-      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (caddr environment) throw next))
-      ((eq? 'function (car (statement-type statement))) (interpret-function statement (car environment) next))
-      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (cadddr environment) (lambda (e) (next (append environment e)))))
-      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (car environment) next))
+      ((eq? 'var (car (statement-type statement))) (interpret-declare (get-dynamic-variables environment) throw (lambda (e) (next (add-new-dynamic-variables environment e)))))
+      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (get-static-variables environment) throw (lambda (e) (next (add-new-static-variables environment e)))))
+      ((eq? 'function (car (statement-type statement))) (interpret-function statement (get-dynamic-methods environment) (lambda (e) (next (add-new-dynamic-methods environment e)))))
+      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (get-static-methods environment) (lambda (e) (next (add-new-static-methods environment e)))))
+      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (get-dynamic-methods environment) (lambda (e) (next (add-new-dynamic-methods environment e)))))
       (else (myerror "Unknown statement:" (statement-type statement))))))
 
-'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
+;'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
+(define add-new-static-variables
+  (lambda (cc vars)
+    (append (append (append (append (get-dynamic-methods cc) (get-static-methods cc)) (get-dynamic-variables cc)) vars) (get-super-name cc))))
+
+(define add-new-dynamic-variables
+  (lambda (cc vars)
+    (append (append (append (get-dynamic-methods cc) (get-static-methods cc)) vars) (cdddr cc))))
+
+(define add-new-static-methods
+  (lambda (cc methods)
+    (append (append (get-dynamic-methods cc) methods) (cddr cc))))
+
+(define add-new-dynamic-methods
+  (lambda (cc methods)
+    (cons methods (cdr cc))))
+
+; for getting stuff out of classes
+(define get-dynamic-methods car)
+(define get-static-methods cadr)
+(define get-dynamic-variables caddr)
+(define get-static-variables cadddr)
+(define get-super-name
+  (lambda (class)
+    (car (cddddr class))))
+                                                                                                                           
+
 ;make new class env
 (define new_class_env
   (lambda ()
@@ -144,8 +167,8 @@
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
     (if (null? superclass)
-        (insert classname (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) ) return break continue throw next) environment)
-        (insert classname (interpret-class-closure body (add_superclass superclass) return break continue throw next) environment))))
+        (interpret-class-closure (car body) '(  ((()())) ((()())) ((()())) ((()())) (1)) return break continue throw (lambda (cc) (next (insert classname cc environment))))
+        (interpret-class-closure body (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 
 ;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)
@@ -345,20 +368,13 @@
   (lambda (statement)
     (not (null? (cdddr statement)))))
 
-; for getting stuff out of classes
-(define get-dynamic-methods car)
-(define get-static-methods cadr)
-(define get-dynamic-variables caddr)
-(define get-static-variables cadddr)
-(define get-super-name
-  (lambda (class)
-    (car (cddddr class))))
+
 
 ; these helper functions define the parts of the various statement types
 (define statement-type operator)
 (define get-expr operand1)
 (define get-function-var operand1)
-(define get-function-value cdddr)
+(define get-function-value cddr)
 (define get-declare-var operand1)
 (define get-declare-value operand2)
 (define exists-declare-value? exists-operand2?)

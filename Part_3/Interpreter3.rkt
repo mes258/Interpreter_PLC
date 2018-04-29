@@ -5,7 +5,7 @@
 ;Call (interpret '"<filename>") where <filename> is any .txt file path.
 
 ; If you are using racket instead of scheme, uncomment these two lines, comment the (load "simpleParser.scm") and uncomment the (require "simpleParser.scm")
- ;#lang racket
+ #lang racket
  (require "functionParser.scm")
 ;(require "simpleParser.scm")
 ;(load "functionParser.scm")
