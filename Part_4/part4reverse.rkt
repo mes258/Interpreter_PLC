@@ -143,7 +143,7 @@
 ;'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
 (define add-new-static-variables
   (lambda (cc vars)
-    (append (list (get-dynamic-methods cc) (get-static-methods cc) (get-dynamic-variables cc) vars) (list (get-super cc)))))
+    (append (list (get-dynamic-methods cc) (get-static-methods cc) (get-dynamic-variables cc) vars) (list (get-super-name cc)))))
 
 (define add-new-dynamic-variables
   (lambda (cc vars)
@@ -162,17 +162,9 @@
 (define get-static-methods cadr)
 (define get-dynamic-variables caddr)
 (define get-static-variables cadddr)
-(define get-super
-  (lambda (class)
-    (car (cddddr class))))
-
 (define get-super-name
   (lambda (class)
-    (caar (cddddr class))))
-
-(define has-super
-  (lambda (class)
-    (null? (get-super class))))
+    (car (cddddr class))))
 
 (define get-dynamic-variable-names caaddr)
 (define get-static-variable-names
@@ -183,7 +175,7 @@
 
 (define getclass car)
 
-(define prep-env-for-instance ; returns new environment: ( (instance static + dynamic methods) (instance vars + static vars) + old env)
+(define prep-env-for-instance
   (lambda (env instance)
     (eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v)
                                                                           (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass v) env)) (get-static-methods (lookup (getclass v) env)))
@@ -206,21 +198,9 @@
   (lambda (instance env)
     (list (get-dynamic-variables (lookup (getclass (lookup instance env)) env)) (cadr (lookup instance env)))))
 
-(define merge-state-frames  ;WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED !!!!!!!!!!!!!!!!!
-  (lambda (frame-a frame-b) ;#########################################################################
+(define merge-state-frames ; WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED
+  (lambda (frame-a frame-b)
     (list (append (car frame-a) (car frame-b)) (append (cadr frame-a) (cadr frame-b)))))
-
-;(define get-all-instance-varnames
-;  (lambda (instance env)
-;    ((eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v) (get-all-names-from-class (getclass v) env (lambda (x) x)) )))))
-;(define get-all-names-from-class
-;  (lambda (class env next)
-;    (if (has-super (lookup (getclass instance) env))
-;        (get-all-names-from-class (get))
-;        (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
- ;                           (get-static-variables (lookup class env))))
-     
-                                                                               
 
 ;make new class env
 (define new_class_env
@@ -229,11 +209,11 @@
 
 (define new_class_frame
   (lambda ()
-    '(  (()()) (()()) (()()) (()()) )  ))
+    '(  ((()())) ((()())) ((()())) ((()())) )  ))
 
 (define add_superclass
   (lambda (superclass)
-    (append (new_class_frame)(list (list (cadr superclass)))) ))
+    (append superclass (cddddr new_class_frame))))
 
 ;Add a new class to a state
 (define interpret-class
@@ -261,7 +241,7 @@
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (display environment)(newline)(newline)
+    (display statement)(newline)(newline)
     (if (list? (operand1 statement))
         (eval-expression (cadr statement) environment throw (lambda (f)
                                                               (addBinding (append (car f) (list 'this)) (append (cddr statement) (list (operand1 (operand1 statement)))) environment (envSetUp (cadr statement) environment) throw (lambda (e)
@@ -551,7 +531,7 @@
 (define lookup-in-env
   (lambda (var environment)
     (cond
-      ((null? environment) (myerror "error: undefined variaable" var))
+      ((null? environment) (myerror "error: undefined variable" var))
       ((exists-in-list? var (variables (topframe environment))) (lookup-in-frame var (topframe environment)))
       (else (lookup-in-env var (cdr environment))))))
 
@@ -574,8 +554,8 @@
 (define get-value
   (lambda (n l)
     (cond
-      ((zero? n) (car l))
-      (else (get-value (- n 1) (cdr l))))))
+      ((zero? (- (length l) (+ n 1))) (car l))
+      (else (get-value n (cdr l))))))
 
 ; Adds a new variable/value binding pair into the environment.  Gives an error if the variable already exists in this frame.
 (define insert
@@ -598,7 +578,8 @@
 ; Add a new variable/value pair to the frame.
 (define add-to-frame
   (lambda (var val frame)
-    (list (cons var (variables frame)) (cons (scheme->language val) (store frame)))))
+    (list (cons var (variables frame)) (append (store frame) (list (scheme->language val))))))
+
 
 ; Changes the binding of a variable in the environment to a new value
 (define update-existing
@@ -618,6 +599,7 @@
     (cond
       ((eq? var (car varlist)) (reverse (cons (scheme->language (begin (set-box! (car (reverse vallist)) val) (car (reverse vallist)))) ((reverse cdr vallist)))))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (reverse (cdr (reverse vallist)))))))))
+
 
 ; Returns the list of variables from a frame
 (define variables
@@ -657,4 +639,3 @@
                             str
                             (makestr (string-append str (string-append " " (symbol->string (scheme->language (car vals))))) (cdr vals))))))
       (error-break (display (string-append str (makestr "" vals)))))))
-
