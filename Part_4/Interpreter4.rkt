@@ -69,7 +69,8 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (cons classname (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))))))
+    (display (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))) (newline)
+    (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))))
 
 (define get-var-vals
   (lambda (s)
@@ -232,7 +233,6 @@
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (display statement)(display environment)(newline)
     (eval-expression (cadr statement) environment throw (lambda (f)
                                                     (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
                                                                                                                                                (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
@@ -240,7 +240,9 @@
 
 (define envSetUp
   (lambda (name environment)
-    (push-frame (getactiveenvironment name environment))))
+    (if (list? name)
+        (prep-env-for-instance environment (operand1 name))
+        (push-frame (getactiveenvironment name environment)))))
 
 (define addBinding
   (lambda (paramList inputParamList environment activeEnv throw next)
@@ -363,6 +365,7 @@
       ((eq? 'funcall (operator expr)) (interpret-funcall expr environment (lambda (v) (next v)) (lambda (env) (myerror "Break used outside of loop")) (lambda (env) (myerror "Continue used outside of loop")) throw next))
       ((and (eq? '- (operator expr)) (= 2 (length expr))) (eval-expression (operand1 expr) environment throw (lambda (val) (next (- val)))))
       ((eq? '= (operator expr)) (interpret-assign expr environment throw (lambda (env) (next (lookup expr env)))))
+      ((eq? 'new (operator expr)) (next (create-instance-closure (cadr expr) environment)))
       (else (eval-expression (operand1 expr) environment throw (lambda (op1value) (eval-binary-op2 expr op1value environment throw next)))))))
 
 ; Complete the evaluation of the binary operator by evaluating the second operand and performing the operation.
@@ -382,8 +385,7 @@
       ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
       ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
       ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
-      ((eq? 'new (operator expr)) (next (create-instance-closure (cadr expr) environment)))
-      ((eq? 'dot (operator expr)) (next environment))
+      ((eq? 'dot (operator expr)) (eval-dot-operator op1value (operand2 expr) environment next))
       (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
@@ -393,6 +395,12 @@
     (if (and (number? val1) (number? val2))
         (= val1 val2)
         (eq? val1 val2))))
+
+(define eval-dot-operator
+  (lambda (instance value env next)
+    (display (lookup value (list (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) )))) (newline)
+    (next (lookup value (list (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) ))))))
+    
 
 
 ;-----------------
