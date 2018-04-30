@@ -27,7 +27,6 @@
 ;take in a classname and run the main function within it
 (define interpret-class-main
   (lambda (classname env return break continue throw next)
-    (display (prep-env-for-class env classname)) (newline)
     (interpret-funcall '(funcall main) (prep-env-for-class env classname) return break continue throw next)))
 
     
@@ -132,7 +131,6 @@
 ;class
 (define interpret-class-closure
   (lambda (statements environment return break continue throw next)
-    (display environment)(newline)
     (cond
       ((null? statements) (next environment))
       ((eq? 'var (statement-type (car statements))) (interpret-declare (car statements) (list (get-dynamic-variables environment)) throw (lambda (e) (interpret-class-closure (cdr statements) (add-new-dynamic-variables environment (car e)) return break continue throw next))))
@@ -179,7 +177,6 @@
 
 (define prep-env-for-class
   (lambda (env classname)
-    (display(lookup classname env))(newline)
     (append (list (get-static-methods (lookup classname env)) (get-static-variables (lookup classname env))) (get-only-classes env))))
 
 (define get-only-classes
@@ -212,7 +209,6 @@
 ;Add a new class to a state
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
-    (display body)(newline)(newline)
     (if (null? superclass)
         (interpret-class-closure (car body) '(  (()()) (()()) (()()) (()()) ()) return break continue throw (lambda (cc) (next (insert classname cc environment))))
         (interpret-class-closure (car body) (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
@@ -236,6 +232,7 @@
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
+    (display statement)(display environment)(newline)
     (eval-expression (cadr statement) environment throw (lambda (f)
                                                     (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
                                                                                                                                                (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
@@ -385,7 +382,8 @@
       ((eq? '>= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (>= op1value op2value)))))
       ((eq? '|| (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (or op1value op2value)))))
       ((eq? '&& (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (and op1value op2value)))))
-      ((eq? (car expr) 'new) (create-instance-closure (cadr expr) environment))
+      ((eq? 'new (operator expr)) (next (create-instance-closure (cadr expr) environment)))
+      ((eq? 'dot (operator expr)) (next environment))
       (else (next (myerror "Unknown operator:" (operator expr))))
       )))
 
