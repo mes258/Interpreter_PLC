@@ -69,7 +69,6 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (display (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))) (newline)
     (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))))
 
 (define get-var-vals
@@ -167,6 +166,13 @@
   (lambda (class)
     (car (cddddr class))))
 
+(define get-dynamic-variable-names caaddr)
+(define get-static-variable-names
+  (lambda (class)
+    (caar (cdddr class))))
+
+(define get-variable-values cadr) ;this one gets variable values out of an instance
+
 (define getclass car)
 
 (define prep-env-for-instance
@@ -257,7 +263,7 @@
 (define interpret-declare
   (lambda (statement environment throw next)
     (if (exists-declare-value? statement)
-        (eval-expression (get-declare-value statement) environment throw (lambda (val) (next (insert (get-declare-var statement) val environment))))
+        (eval-expression (get-declare-value statement) environment throw (lambda (val) (display val)(display '::interpret-declare_value)(newline) (next (insert (get-declare-var statement) val environment))))
         (next (insert (get-declare-var statement) 'novalue environment)))))
 
 ; Updates the environment to add a new binding for a variable
@@ -398,9 +404,12 @@
 
 (define eval-dot-operator
   (lambda (instance value env next)
-    (display (lookup value (list (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) )))) (newline)
-    (next (lookup value (list (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) ))))))
+    (next (lookup value (list (merge-state-frames (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) )
+                              (list (append (get-static-variable-names (lookup (getclass instance) env)) (get-dynamic-variable-names (lookup (getclass instance) env))) (get-variable-values instance)))         )))))
     
+(define set-boxed-value
+  (lambda (instance value newvalue env)
+    (begin (update-existing value newvalue (list (list (append (get-static-variable-names (lookup (getclass (lookup instance env)) env)) (get-dynamic-variable-names (lookup (getclass (lookup instance env)) env))) (get-variable-values (lookup instance env))))) env)))
 
 
 ;-----------------
@@ -551,9 +560,13 @@
 ; Changes the binding of a variable to a new value in the environment.  Gives an error if the variable does not exist.
 (define update
   (lambda (var val environment)
-    (if (exists? var environment)
-        (update-existing var val environment)
-        (myerror "error: variable used but not defined:" var))))
+    (cond
+      ((list? var) (set-boxed-value (operand1 var) (operand2 var) val environment))
+      ((exists? var environment) (update-existing var val environment))
+      (else (myerror "error: variable used but not defined:" var)))))
+
+;(define set-boxed-value
+;  (lambda (instance value env)
 
 ; Add a new variable/value pair to the frame.
 (define add-to-frame
