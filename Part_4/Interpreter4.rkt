@@ -69,7 +69,7 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))))
+    (cons classname (list (append (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))) (get-var-vals (get-static-variables (lookup classname env))))))))
 
 (define get-var-vals
   (lambda (s)
@@ -213,10 +213,12 @@
 (define get-all-instance-varnames
   (lambda (instance env)
     ((eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v) (get-all-names-from-class (getclass v) env (lambda (x) x)) )))))
+
 (define get-all-names-from-class
   (lambda (class env next)
     (if (has-super (lookup (getclass instance) env))
-        (get-all-names-from-class (get))
+        (get-all-names-from-class (get-super-name class) env (lambda (frame)
+                                                               ( (next ) )))
         (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
                             (get-static-variables (lookup class env))))
      
