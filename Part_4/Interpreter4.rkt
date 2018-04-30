@@ -131,14 +131,16 @@
 
 ;class
 (define interpret-class-closure
-  (lambda (statement environment return break continue throw next)
+  (lambda (statements environment return break continue throw next)
+    (display environment)(newline)
     (cond
-      ((eq? 'var (car (statement-type statement))) (interpret-declare (list (get-dynamic-variables environment)) throw (lambda (e) (next (add-new-dynamic-variables environment (car e))))))
-      ((eq? 'static-var (car (statement-type statement))) (interpret-declare statement (list (get-static-variables environment)) throw (lambda (e) (next (add-new-static-variables environment (car e))))))
-      ((eq? 'function (car (statement-type statement))) (interpret-function statement (list (get-dynamic-methods environment)) (lambda (e) (next (add-new-dynamic-methods environment (car e))))))
-      ((eq? 'static-function (car (statement-type statement))) (interpret-function (car statement) (list (get-static-methods environment)) (lambda (e) (next (add-new-static-methods environment (car e))))))
-      ((eq? 'abstract-function (car (statement-type statement))) (interpret-function statement (list (get-dynamic-methods environment)) (lambda (e) (next (add-new-dynamic-methods environment (car e))))))
-      (else (myerror "Unknown statement:" (statement-type statement))))))
+      ((null? statements) (next environment))
+      ((eq? 'var (statement-type (car statements))) (interpret-declare (car statements) (list (get-dynamic-variables environment)) throw (lambda (e) (interpret-class-closure (cdr statements) (add-new-dynamic-variables environment (car e)) return break continue throw next))))
+      ((eq? 'static-var (statement-type (car statements))) (interpret-declare (car statements) (list (get-static-variables environment)) throw (lambda (e) (interpret-class-closure (cdr statements) (add-new-static-variables environment (car e)) return break continue throw next))))
+      ((eq? 'function (statement-type (car statements))) (interpret-function (car statements) (list (get-dynamic-methods environment)) (lambda (e) (interpret-class-closure (cdr statements) (add-new-dynamic-methods environment (car e)) return break continue throw next))))
+      ((eq? 'static-function (statement-type (car statements))) (interpret-function (car statements) (list (get-static-methods environment)) (lambda (e) (interpret-class-closure (cdr statements) (add-new-static-methods environment (car e)) return break continue throw next))))
+      ((eq? 'abstract-function (statement-type (car statements))) (interpret-function (car statements) (list (get-dynamic-methods environment)) (lambda (e) (interpret-class-closure (cdr statements) (add-new-dynamic-methods environment (car e)) return break continue throw next))))
+      (else (myerror "Unknown statement:" (statement-type (car statements)))))))
 
 ;'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
 (define add-new-static-variables
@@ -210,9 +212,10 @@
 ;Add a new class to a state
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
+    (display body)(newline)(newline)
     (if (null? superclass)
         (interpret-class-closure (car body) '(  (()()) (()()) (()()) (()()) ()) return break continue throw (lambda (cc) (next (insert classname cc environment))))
-        (interpret-class-closure body (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
+        (interpret-class-closure (car body) (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 
 ;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)
