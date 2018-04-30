@@ -143,7 +143,7 @@
 ;'(((A) (#&((() ()) ((main) (#&(((return 5))))) (() ())))))
 (define add-new-static-variables
   (lambda (cc vars)
-    (append (list (get-dynamic-methods cc) (get-static-methods cc) (get-dynamic-variables cc) vars) (list (get-super-name cc)))))
+    (append (list (get-dynamic-methods cc) (get-static-methods cc) (get-dynamic-variables cc) vars) (list (get-super cc)))))
 
 (define add-new-dynamic-variables
   (lambda (cc vars)
@@ -162,9 +162,17 @@
 (define get-static-methods cadr)
 (define get-dynamic-variables caddr)
 (define get-static-variables cadddr)
-(define get-super-name
+(define get-super
   (lambda (class)
     (car (cddddr class))))
+
+(define get-super-name
+  (lambda (class)
+    (caar (cddddr class))))
+
+(define has-super
+  (lambda (class)
+    (null? (get-super class))))
 
 (define get-dynamic-variable-names caaddr)
 (define get-static-variable-names
@@ -175,7 +183,7 @@
 
 (define getclass car)
 
-(define prep-env-for-instance
+(define prep-env-for-instance ; returns new environment: ( (instance static + dynamic methods) (instance vars + static vars) + old env)
   (lambda (env instance)
     (eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v)
                                                                           (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass v) env)) (get-static-methods (lookup (getclass v) env)))
@@ -198,9 +206,21 @@
   (lambda (instance env)
     (list (get-dynamic-variables (lookup (getclass (lookup instance env)) env)) (cadr (lookup instance env)))))
 
-(define merge-state-frames ; WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED
-  (lambda (frame-a frame-b)
+(define merge-state-frames  ;WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED !!!!!!!!!!!!!!!!!
+  (lambda (frame-a frame-b) ;#########################################################################
     (list (append (car frame-a) (car frame-b)) (append (cadr frame-a) (cadr frame-b)))))
+
+(define get-all-instance-varnames
+  (lambda (instance env)
+    ((eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v) (get-all-names-from-class (getclass v) env (lambda (x) x)) )))))
+(define get-all-names-from-class
+  (lambda (class env next)
+    (if (has-super (lookup (getclass instance) env))
+        (get-all-names-from-class (get))
+        (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
+                            (get-static-variables (lookup class env))))
+     
+                                                                               
 
 ;make new class env
 (define new_class_env
@@ -209,11 +229,11 @@
 
 (define new_class_frame
   (lambda ()
-    '(  ((()())) ((()())) ((()())) ((()())) )  ))
+    '(  (()()) (()()) (()()) (()()) )  ))
 
 (define add_superclass
   (lambda (superclass)
-    (append superclass (cddddr new_class_frame))))
+    (append (new_class_frame)(list (list (cadr superclass)))) ))
 
 ;Add a new class to a state
 (define interpret-class
@@ -241,7 +261,7 @@
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (display statement)(newline)(newline)
+    (display environment)(newline)(newline)
     (if (list? (operand1 statement))
         (eval-expression (cadr statement) environment throw (lambda (f)
                                                               (addBinding (append (car f) (list 'this)) (append (cddr statement) (list (operand1 (operand1 statement)))) environment (envSetUp (cadr statement) environment) throw (lambda (e)
