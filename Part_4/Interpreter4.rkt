@@ -180,7 +180,7 @@
     (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass (lookup instance env)) env)) (get-static-methods (lookup (getclass (lookup instance env)) env)))
                   (prep-instance-vars instance env)
                   (get-static-variables (lookup (getclass (lookup instance env)) env)) )
-            (list (get-only-classes env)))))
+            (get-only-classes env))))
 
 (define prep-env-for-class
   (lambda (env classname)
@@ -239,15 +239,21 @@
 ;Call a function
 (define interpret-funcall
   (lambda (statement environment return break continue throw next)
-    (eval-expression (cadr statement) environment throw (lambda (f)
-                                                    (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
-                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
-                                                                                                                                                                                                                                                  (next environment)))))))))
+    (display statement)(newline)(newline)
+    (if (list? (operand1 statement))
+        (eval-expression (cadr statement) environment throw (lambda (f)
+                                                              (addBinding (append (car f) (list 'this)) (append (cddr statement) (list (operand1 (operand1 statement)))) environment (envSetUp (cadr statement) environment) throw (lambda (e)
+                                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
+                                                                                                                                                                                                                                                                  (next environment)))))))
+        (eval-expression (cadr statement) environment throw (lambda (f)
+                                                              (addBinding (car f) (cddr statement) environment (envSetUp (cadr statement) environment) throw (lambda (e)
+                                                                                                                                                               (interpret-statement-list (cadr f) e return break continue (lambda (v e2) (throw v environment)) (lambda (e2)
+                                                                                                                                                                                                                                                                  (next environment))))))))))
 
 (define envSetUp
   (lambda (name environment)
     (if (list? name)
-        (prep-env-for-instance environment (operand1 name))
+        (push-frame (prep-env-for-instance environment (operand1 name)))
         (push-frame (getactiveenvironment name environment)))))
 
 (define addBinding
@@ -256,8 +262,7 @@
       ((and (null? paramList) (null? inputParamList))(next activeEnv))
       ((or (and (null? inputParamList) (not (null? paramList))) (and (not (null? inputParamList)) (null? paramList))) (error inputParamList "mismatched parameters and arguments"))
       (else (eval-expression (car inputParamList) environment throw (lambda (p)
-                                                                (interpret-declare (cons '= (cons (car paramList) (list p))) activeEnv throw (lambda (e)
-                                                                                                                                         (addBinding (cdr paramList) (cdr inputParamList) environment e throw next)))))))))      
+                                                                      (addBinding (cdr paramList) (cdr inputParamList) environment (insert (car paramList) p activeEnv) throw next)))))))      
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare

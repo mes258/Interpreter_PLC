@@ -8,7 +8,6 @@ class A {
 
   static function main() {
     var a = new A();
-    a.x = a.x + 11;
-    return a.x;
+    return a.add(11);
   }
 }
