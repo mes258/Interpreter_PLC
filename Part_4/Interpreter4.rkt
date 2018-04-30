@@ -177,10 +177,12 @@
 
 (define prep-env-for-instance
   (lambda (env instance)
-    (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass (lookup instance env)) env)) (get-static-methods (lookup (getclass (lookup instance env)) env)))
-                  (prep-instance-vars instance env)
-                  (get-static-variables (lookup (getclass (lookup instance env)) env)) )
-            (get-only-classes env))))
+    (eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v)
+                                                                          (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass v) env)) (get-static-methods (lookup (getclass v) env)))
+                                                                                        (merge-state-frames (list (get-dynamic-variable-names (lookup (getclass v) env)) (get-variable-values v))
+                                                                                                            (get-static-variables (lookup (getclass v) env))))
+                                                                                  (get-only-classes env))
+                                                                          ))))
 
 (define prep-env-for-class
   (lambda (env classname)
