@@ -1,4 +1,18 @@
 # todo
 
 - [ ] when instances are constructed (create-instance-closure), they need to get variables from their parent class also. This should look like (for an example where B extends A): (B (B-dynamic-vars B-static-vars A-dynamic-vars A-static-vars))
-- [ ] make a function (get-intance-names-and-values {evaluated instance ex: '(B (B-dynamic-vars B-static-vars A-dynamic-vars A-static-vars))} {environment} ) => ((B-dynamic-var-names B-static-var-names B-dynamic-method-names B-static-method-names A-dynamic-var-names A-static-var-names A-dynamic-method-names A-static-method-names)(B-dynamic-var-vals B-static-var-vals B-dynamic-method-vals B-static-method-vals A-dynamic-var-vals A-static-var-vals A-dynamic-method-vals A-static-method-vals)). This will take a lot of work/helper functions... idk
+
+- [ ] make a function (get-intance-names-and-values {evaluated instance ex: 
+
+'(B (B-dynamic-vars B-static-vars A-dynamic-vars A-static-vars))} 
+
+{environment} ) => 
+
+(
+(B-dynamic-var-names B-static-var-names B-dynamic-method-names B-static-method-names A-dynamic-var-names A-static-var-names A-dynamic-method-names A-static-method-names)
+
+(B-dynamic-var-vals B-static-var-vals B-dynamic-method-vals B-static-method-vals A-dynamic-var-vals A-static-var-vals A-dynamic-method-vals A-static-method-vals)
+). 
+
+
+This will take a lot of work/helper functions... idk
