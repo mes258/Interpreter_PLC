@@ -477,9 +477,9 @@
 
 (define eval-dot-operator
   (lambda (instance value env next)
-    (display 'HERE)(newline)(display (list 'instance instance 'value value))(newline)
-    (next (lookup value (list (merge-state-frames (merge-state-frames (get-dynamic-methods (lookup (get-true-type instance) env)) (get-static-methods (lookup (get-true-type instance) env)) )
-                              (list (append (get-static-variable-names (lookup (get-true-type instance) env)) (get-dynamic-variable-names (lookup (get-true-type instance) env))) (get-variable-values instance)))         )))))
+    (display 'HERE)(newline)(display (list 'instance instance 'value value 'dynam_methods (get-dynamic-methods (lookup (get-true-type instance) env))))(newline)
+    (next (lookup value (list (merge-state-frames (get-all-methods-from-class (lookup (get-true-type instance) env) env)
+                              (list (append (get-static-variable-names (lookup (getclass instance) env)) (get-dynamic-variable-names (lookup (getclass instance) env))) (get-variable-values instance)))         )))))
 
 (define set-boxed-value
   (lambda (instance value newvalue env)
