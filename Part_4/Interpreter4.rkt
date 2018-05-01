@@ -69,7 +69,7 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-        (cons classname (list (get-super-instance-closure classname env)))))
+        (cons classname (append (list (get-super-instance-closure classname env)) (list classname)))))
 
 
 (define get-super-instance-closure
@@ -77,6 +77,10 @@
     (if (has-super (lookup classname env))
         (append (get-closure-value classname env) (get-super-instance-closure (get-super-name (lookup classname env))  env))
         (get-closure-value classname env))))
+
+(define get-true-type
+  (lambda (instance-closure)
+    (caddr instance-closure)))
 
 (define get-closure-value
   (lambda (classname env)
