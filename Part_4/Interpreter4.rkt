@@ -29,7 +29,7 @@
   (lambda (classname env return break continue throw next)
     (interpret-funcall '(funcall main) (prep-env-for-class env classname) return break continue throw next)))
 
-    
+
 ; interprets a list of statements.  The state/environment from each statement is used for the next ones.
 (define interpret-statement-list
   (lambda (statement-list environment return break continue throw next)
@@ -69,12 +69,12 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))))
+    (cons classname (list (append (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))) (get-var-vals (get-static-variables (lookup classname env))))))))
 
 (define get-var-vals
   (lambda (s)
     (cadr s)))
-    
+
 
 (define reboxlist
  (lambda (l)
@@ -85,7 +85,7 @@
 (define unbox-rebox
   (lambda (var)
     (box (unbox var))))
-    
+
 
 
 ;(define interpret-instance
@@ -219,8 +219,8 @@
 ;        (get-all-names-from-class (get))
 ;        (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
  ;                           (get-static-variables (lookup class env))))
-     
-                                                                               
+
+
 
 ;make new class env
 (define new_class_env
@@ -284,7 +284,7 @@
       ((and (null? paramList) (null? inputParamList))(next activeEnv))
       ((or (and (null? inputParamList) (not (null? paramList))) (and (not (null? inputParamList)) (null? paramList))) (error inputParamList "mismatched parameters and arguments"))
       (else (eval-expression (car inputParamList) environment throw (lambda (p)
-                                                                      (addBinding (cdr paramList) (cdr inputParamList) environment (insert (car paramList) p activeEnv) throw next)))))))      
+                                                                      (addBinding (cdr paramList) (cdr inputParamList) environment (insert (car paramList) p activeEnv) throw next)))))))
 
 ; Adds a new variable binding to the environment.  There may be an assignment with the variable
 (define interpret-declare
@@ -340,16 +340,16 @@
 (define create-throw-catch-continuation
   (lambda (catch-statement environment return break continue throw next finally-block)
     (cond
-      ((null? catch-statement) (lambda (ex env) (interpret-block finally-block env return break continue throw (lambda (env2) (throw ex env2))))) 
+      ((null? catch-statement) (lambda (ex env) (interpret-block finally-block env return break continue throw (lambda (env2) (throw ex env2)))))
       ((not (eq? 'catch (statement-type catch-statement))) (myerror "Incorrect catch statement"))
       (else (lambda (ex env)
-                  (interpret-statement-list 
-                       (get-body catch-statement) 
+                  (interpret-statement-list
+                       (get-body catch-statement)
                        (insert (catch-var catch-statement) ex (push-frame env))
-                       return 
-                       (lambda (env2) (break (pop-frame env2))) 
-                       (lambda (env2) (continue (pop-frame env2))) 
-                       (lambda (v env2) (throw v (pop-frame env2))) 
+                       return
+                       (lambda (env2) (break (pop-frame env2)))
+                       (lambda (env2) (continue (pop-frame env2)))
+                       (lambda (v env2) (throw v (pop-frame env2)))
                        (lambda (env2) (interpret-block finally-block (pop-frame env2) return break continue throw next))))))))
 
 ; To interpret a try block, we must adjust  the return, break, continue continuations to interpret the finally block if any of them are used.
@@ -409,7 +409,7 @@
       ((eq? '- (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (- op1value op2value)))))
       ((eq? '* (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (* op1value op2value)))))
       ((eq? '/ (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (/ op1value op2value)))))
-      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (remainder op1value op2value))))) 
+      ((eq? '% (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (remainder op1value op2value)))))
       ((eq? '== (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (isequal op1value op2value)))))
       ((eq? '!= (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (not (isequal op1value op2value))))))
       ((eq? '< (operator expr)) (eval-expression (operand2 expr) environment throw (lambda (op2value) (next (< op1value op2value)))))
@@ -433,7 +433,7 @@
   (lambda (instance value env next)
     (next (lookup value (list (merge-state-frames (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) )
                               (list (append (get-static-variable-names (lookup (getclass instance) env)) (get-dynamic-variable-names (lookup (getclass instance) env))) (get-variable-values instance)))         )))))
-    
+
 (define set-boxed-value
   (lambda (instance value newvalue env)
     (begin (update-existing value newvalue (list (list (append (get-static-variable-names (lookup (getclass (lookup instance env)) env)) (get-dynamic-variable-names (lookup (getclass (lookup instance env)) env))) (get-variable-values (lookup instance env))))) env)))
@@ -538,7 +538,7 @@
 (define lookup
   (lambda (var environment)
     (unbox (lookup-variable var environment))))
-  
+
 ; A helper function that does the lookup.  Returns an error if the variable does not have a legal value
 (define lookup-variable
   (lambda (var environment)
@@ -633,8 +633,8 @@
 ; Functions to convert the Scheme #t and #f to our languages true and false, and back.
 
 (define language->scheme
-  (lambda (v) 
-    (cond 
+  (lambda (v)
+    (cond
       ((eq? v 'false) #f)
       ((eq? v 'true) #t)
       (else v))))
@@ -657,4 +657,3 @@
                             str
                             (makestr (string-append str (string-append " " (symbol->string (scheme->language (car vals))))) (cdr vals))))))
       (error-break (display (string-append str (makestr "" vals)))))))
-
