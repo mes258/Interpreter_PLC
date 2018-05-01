@@ -427,6 +427,7 @@
 
 (define eval-super
   (lambda (env throw next)
+    (display 'SUPER)(newline)(display (cons (get-super-name (lookup (getclass (lookup 'this env)) env)) (cdr (lookup 'this env))) )(newline)
     (next (cons (get-super-name (lookup (getclass (lookup 'this env)) env)) (cdr (lookup 'this env))))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
@@ -472,6 +473,7 @@
 
 (define eval-dot-operator
   (lambda (instance value env next)
+    (display 'HERE)(newline)(display (list 'instance instance 'value value))(newline)
     (next (lookup value (list (merge-state-frames (merge-state-frames (get-dynamic-methods (lookup (getclass instance) env)) (get-static-methods (lookup (getclass instance) env)) )
                               (list (append (get-static-variable-names (lookup (getclass instance) env)) (get-dynamic-variable-names (lookup (getclass instance) env))) (get-variable-values instance)))         )))))
 
