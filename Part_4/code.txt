@@ -1,6 +1,8 @@
 class A {
 
   var x = 100;
+  var y = 40;
+  var z = 10;
 
   function add(x) {
     return this.x + x;
