@@ -206,9 +206,9 @@
   (lambda (instance env)
     (list (get-dynamic-variables (lookup (getclass (lookup instance env)) env)) (cadr (lookup instance env)))))
 
-(define merge-state-frames  ;WHEN STATE IS REVERSED, THIS SHOULD PROBABLY BE CHANGED !!!!!!!!!!!!!!!!!
-  (lambda (frame-a frame-b) ;#########################################################################
-    (list (append (car frame-a) (car frame-b)) (append (cadr frame-a) (cadr frame-b)))))
+(define merge-state-frames  
+  (lambda (frame-a frame-b) 
+    (list (append (car frame-a) (car frame-b)) (append (cadr frame-b) (cadr frame-a)))))
 
 ;(define get-all-instance-varnames
 ;  (lambda (instance env)
@@ -574,8 +574,8 @@
 (define get-value
   (lambda (n l)
     (cond
-      ((zero? n) (car l))
-      (else (get-value (- n 1) (cdr l))))))
+      ((zero? (- (length l) (+ n 1))) (car l))
+      (else (get-value n (cdr l))))))
 
 ; Adds a new variable/value binding pair into the environment.  Gives an error if the variable already exists in this frame.
 (define insert
@@ -598,7 +598,7 @@
 ; Add a new variable/value pair to the frame.
 (define add-to-frame
   (lambda (var val frame)
-    (list (cons var (variables frame)) (cons (scheme->language val) (store frame)))))
+    (list (cons var (variables frame)) (append (store frame) (list (scheme->language val))))))
 
 ; Changes the binding of a variable in the environment to a new value
 (define update-existing
@@ -616,7 +616,7 @@
 (define update-in-frame-store
   (lambda (var val varlist vallist)
     (cond
-      ((eq? var (car varlist)) (reverse (cons (scheme->language (begin (set-box! (car (reverse vallist)) val) (car (reverse vallist)))) ((reverse cdr vallist)))))
+      ((eq? var (car varlist)) (reverse (cons (scheme->language (begin (set-box! (car (reverse vallist)) val) (car (reverse vallist)))) (reverse (cdr vallist)))))
       (else (cons (car vallist) (update-in-frame-store var val (cdr varlist) (reverse (cdr (reverse vallist)))))))))
 
 ; Returns the list of variables from a frame
