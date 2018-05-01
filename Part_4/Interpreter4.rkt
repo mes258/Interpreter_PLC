@@ -75,7 +75,7 @@
 (define get-super-instance-closure
   (lambda (classname env)
     (if (has-super (lookup classname env))
-        (append (get-super-instance-closure (get-super-name (lookup classname env))  env) (get-closure-value classname env))
+        (append (get-closure-value classname env) (get-super-instance-closure (get-super-name (lookup classname env))  env))
         (get-closure-value classname env))))
 
 (define get-closure-value
