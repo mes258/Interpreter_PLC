@@ -69,7 +69,18 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (cons classname (list (append (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))) (get-var-vals (get-static-variables (lookup classname env))))))))
+        (cons classname (list (get-super-instance-closure classname env)))))
+
+
+(define get-super-instance-closure
+  (lambda (classname env)
+    (if (has-super (lookup classname env))
+        (append (get-super-instance-closure (get-super-name (lookup classname env))  env) (get-closure-value classname env))
+        (get-closure-value classname env))))
+
+(define get-closure-value
+  (lambda (classname env)
+    (append (get-var-vals (get-static-variables (lookup classname env))) (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env)))))))
 
 (define get-var-vals
   (lambda (s)
@@ -165,14 +176,19 @@
 (define get-super
   (lambda (class)
     (car (cddddr class))))
+    
+(define has-super
+  (lambda (class)
+    (if (null? (get-super class))
+        #f
+        #t)))
+    
 
 (define get-super-name
   (lambda (class)
     (caar (cddddr class))))
 
-(define has-super
-  (lambda (class)
-    (null? (get-super class))))
+
 
 (define get-dynamic-variable-names caaddr)
 (define get-static-variable-names
@@ -227,20 +243,18 @@
   (lambda ()
     (list (new_class_frame))))
 
-(define new_class_frame
-  (lambda ()
-    '(  (()()) (()()) (()()) (()()) )  ))
+(define new_class_frame '(  (()()) (()()) (()()) (()()) ()))
 
 (define add_superclass
-  (lambda (superclass)
-    (append (new_class_frame)(list (list (cadr superclass)))) ))
+  (lambda (superclass env)
+    (append (list (get-dynamic-methods env) (get-static-methods env) (get-dynamic-variables env) (get-static-variables env)) (list superclass))))
 
 ;Add a new class to a state
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
     (if (null? superclass)
-        (interpret-class-closure (car body) '(  (()()) (()()) (()()) (()()) ()) return break continue throw (lambda (cc) (next (insert classname cc environment))))
-        (interpret-class-closure (car body) (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
+        (interpret-class-closure (car body) new_class_frame return break continue throw (lambda (cc) (next (insert classname cc environment))))
+        (interpret-class-closure (car body) (add_superclass (cdr superclass) new_class_frame) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 
 ;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)

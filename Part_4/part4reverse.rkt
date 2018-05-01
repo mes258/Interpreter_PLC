@@ -69,7 +69,11 @@
 ;instance
 (define create-instance-closure
   (lambda (classname env)
-    (cons classname (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env)))))))
+    (cons classname (get-closure-value classname env))
+
+(define get-closure-value
+  (lambda (classname env)
+    (append (list (reboxlist (get-var-vals (get-dynamic-variables (lookup classname env))))) (get-var-vals (get-static-variables (lookup classname env))))))
 
 (define get-var-vals
   (lambda (s)
@@ -209,7 +213,7 @@
 
 (define new_class_frame
   (lambda ()
-    '(  ((()())) ((()())) ((()())) ((()())) )  ))
+    '(  (()()) (()()) (()()) (()()) ())))
 
 (define add_superclass
   (lambda (superclass)
@@ -219,7 +223,7 @@
 (define interpret-class
   (lambda (classname superclass body environment return break continue throw next)
     (if (null? superclass)
-        (interpret-class-closure (car body) '(  (()()) (()()) (()()) (()()) ()) return break continue throw (lambda (cc) (next (insert classname cc environment))))
+        (interpret-class-closure (car body) new_class_frame return break continue throw (lambda (cc) (next (insert classname cc environment))))
         (interpret-class-closure (car body) (add_superclass superclass) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
 
 

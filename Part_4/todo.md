@@ -1,6 +1,20 @@
 # todo
 
-- [ ] when instances are constructed (create-instance-closure), they need to get variables from their parent class also. This should look like (for an example where B extends A): (B (B-dynamic-vars B-static-vars A-dynamic-vars A-static-vars))
+- [ ] when instances are constructed (create-instance-closure), they need to get variables from their parent class also. This should look like (for an example where B extends A): 
+
+(B (B-dynamic-vars B-static-vars A-dynamic-vars A-static-vars))
+
+(
+	((main) (#&(() ((var test (new C)) (return (funcall (dot (new C) m))))))) 
+	(() ()) 
+
+	((C B A) 
+	(
+	 #&(((m2 m) (#&(() ((return (funcall (dot this m2))))) #&(() ((return (+ x y)))))) (() ()) ((y x) (#&1 #&2)) (() ()) ())
+	 #&(((m2 m) (#&(() ((return (funcall (dot super m))))) #&(() ((return (+ (+ x y) z)))))) (() ()) ((z y) (#&22 #&3)) (() ()) ((extends A))) 
+	 #&(((m) (#&(() ((return (funcall (dot super m))))))) ((main) (#&(() ((var test (new C)) (return (funcall (dot (new C) m))))))) ((w y) (#&222 #&4)) (() ()) ((extends B)))))
+)
+
 
 - [ ] make a function (get-intance-names-and-values {evaluated instance ex: 
 
