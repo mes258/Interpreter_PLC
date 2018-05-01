@@ -7,7 +7,7 @@ class A {
     return this.m2();
   }
 
-  function m2() {
+  function m3() {
     return x+y;
   }
 }
@@ -34,8 +34,7 @@ class C extends B {
   }
 
   static function main() {
-    var test = new C();
     return new C().m();
-   
   }
 }
+
