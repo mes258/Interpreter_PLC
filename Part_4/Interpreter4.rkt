@@ -101,37 +101,6 @@
   (lambda (var)
     (box (unbox var))))
 
-
-
-;(define interpret-instance
- ; (lambda (expr environment next)
-  ;  (push_instance_frame environment (lambda (e) (interpret-construct-instance expr environment next)))))
-
-;(define add_classname
- ; (lambda (name env next)
-  ;  (next (cons name env))))
-
-;(define interpret-construct-instance
- ; (lambda (name environment next)
-  ;  (add_classname (name environment (lambda (e) (myAppend (get_dynamic_vars (lookup name e)) (get_instance_closure_vars_with_super (lookup name e) e)))))))
-;
-;(define get_instance_closure_vars_with_super
- ; (lambda (closure e)
-  ;  (if (has_super closure)
-   ;     (myAppend (get_dynamic_vars (closure)) (get_instance_closure_vars_with_super (get_super (closure e))))
-    ;    (e))))
-
-;(define has_super
- ; (lambda (closure)
-  ;  (if (null? (cadr (cdddr closure)))
-   ;     #f
-    ;    #t)))
-
-;(define get_super
-;  (lambda (closure env)
- ;   (lookup (cadr (cdddr closure) env))))
- ;
-;
 ;backwards
 (define myAppend
   (lambda (lis1 lis2)
@@ -225,19 +194,10 @@
   (lambda (instance env)
     (list (get-dynamic-variables (lookup (getclass (lookup instance env)) env)) (cadr (lookup instance env)))))
 
-(define merge-state-frames  
+(define merge-state-frames ;combine two state frames
   (lambda (frame-a frame-b) 
     (list (append (car frame-a) (car frame-b)) (append (cadr frame-b) (cadr frame-a)))))
 
-;(define get-all-instance-varnames
-;  (lambda (instance env)
-;    ((eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v) (get-all-names-from-class (getclass v) env (lambda (x) x)) )))))
-;(define get-all-names-from-class
-;  (lambda (class env next)
-;    (if (has-super (lookup (getclass instance) env))
-;        (get-all-names-from-class (get))
-;        (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
- ;                           (get-static-variables (lookup class env))))
 
 (define get-instance-names-and-values ;will return a state frame with all instance variables in it (includes static class variables)
   (lambda (env instance)
@@ -281,12 +241,6 @@
     (if (null? superclass)
         (interpret-class-closure (car body) new_class_frame return break continue throw (lambda (cc) (next (insert classname cc environment))))
         (interpret-class-closure (car body) (add_superclass (cdr superclass) new_class_frame) return break continue throw (lambda (cc) (next (insert classname cc environment)))))))
-
-
-;(((method names) (method values)) ((dynamic var names)(dynamic var vals)) ((static var names) (static var values)) ((static funct names) (static funct values)) super_name)
-;              car                     cadr                                               caddr                                    cadddr                        caddddr
-
-
 
 ; Calls the return continuation with the given expression value
 (define interpret-return

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 class Shape {
   function area() {
     return 0;
@@ -52,5 +53,18 @@ class Square extends Rectangle {
     s.setWidth(1);
     sum = sum + s.area();
     return sum;
+=======
+class A {
+
+  var x = 100;
+  var y = 10;
+
+  function add(g, h) {
+    return g + h;
+  }
+
+  static function main() {
+    return new A().add(new A().x, new A().y);
+>>>>>>> 409e0bb6a5e1c4e2b4f68f803412e9206fd8a278
   }
 }
