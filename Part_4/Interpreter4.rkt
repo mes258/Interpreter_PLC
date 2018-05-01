@@ -243,7 +243,7 @@
 (define get-all-variable-names-from-class
   (lambda (class_closure env)
     (if (has-super class_closure)
-      (append (append (get-dynamic-variable-names class_closure)(get-static-variable-names class_closure) (get-all-variable-names-from-class (lookup (get-super-name class_closure) env) env)))
+      (append (get-all-variable-names-from-class (lookup (get-super-name class_closure) env) env)(get-dynamic-variable-names class_closure)(get-static-variable-names class_closure))
       (append (get-dynamic-variable-names class_closure)(get-static-variable-names class_closure))
       )))
     
@@ -421,8 +421,13 @@
       ((eq? expr 'false) (next #f))
       ((eq? expr #t) expr)
       ((eq? expr #f) expr)
+      ((eq? expr 'super) (eval-super environment throw next))
       ((not (list? expr)) (next (lookup expr environment)))
       (else (eval-operator expr environment throw next)))))
+
+(define eval-super
+  (lambda (env throw next)
+    (next (cons (get-super-name (lookup (getclass (lookup 'this env)) env)) (cdr (lookup 'this env))))))
 
 ; Evaluate a binary (or unary) operator.  Although this is not dealing with side effects, I have the routine evaluate the left operand first and then
 ; pass the result to eval-binary-op2 to evaluate the right operand.  This forces the operands to be evaluated in the proper order in case you choose
