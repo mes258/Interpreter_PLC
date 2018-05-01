@@ -186,11 +186,10 @@
 (define prep-env-for-instance ; returns new environment: ( (instance static + dynamic methods) (instance vars + static vars) + old env)
   (lambda (env instance)
     (eval-expression instance env (lambda (v) (error v "error thrown")) (lambda (v)
-                                                                          (append (list (merge-state-frames (get-dynamic-methods (lookup (getclass v) env)) (get-static-methods (lookup (getclass v) env)))
-                                                                                        (merge-state-frames (list (get-dynamic-variable-names (lookup (getclass v) env)) (get-variable-values v))
-                                                                                                            (get-static-variables (lookup (getclass v) env))))
-                                                                                  (get-only-classes env))
-                                                                          ))))
+                                                                          (append  (list (get-all-methods-from-class (lookup (getclass v) env) env)
+                                                                                   (get-instance-names-and-values env v))
+                                                                              env)))))
+
 
 (define prep-env-for-class
   (lambda (env classname)
@@ -220,6 +219,29 @@
 ;        (next (merge-state-frames (list (get-dynamic-variable-names (lookup class env)) (get-variable-values instance))
  ;                           (get-static-variables (lookup class env))))
 
+(define get-instance-names-and-values ;will return a state frame with all instance variables in it (includes static class variables)
+  (lambda (env instance)
+    (list (get-all-variable-names-from-class (lookup-in-env (getclass instance) env) env) (get-variable-values instance))
+      ))
+
+(define get-all-variable-names-from-class
+  (lambda (class_closure env)
+    (if (has-super class_closure)
+      (append (append (get-dynamic-variable-names class_closure)(get-static-variable-names class_closure) (get-all-variable-names-from-class (get-super-name class_closure env)))
+      (append (get-dynamic-variable-names class_closure)(get-static-variable-names class_closure))
+      )))
+    
+
+(define get-closure-of-super
+  (lambda (class_closure env next)
+    (next (lookup-in-env (get-super-name class_closure) env))))
+
+(define get-all-methods-from-class ;will return a state frame with all class functions defined in it
+  (lambda (class_closure env)
+    (if (has-super class_closure)
+      (merge-state-frames (merge-state-frames (get-dynamic-methods class_closure)(get-static-methods class_closure)) (get-all-methods-from-class (get-super-name class_closure env)))
+      (merge-state-frames (get-dynamic-methods class_closure)(get-static-methods class_closure))
+      )))
 
 
 ;make new class env
